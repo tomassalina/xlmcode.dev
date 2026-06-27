@@ -3,11 +3,11 @@ import {
   SandpackProvider,
   SandpackPreview,
   SandpackCodeEditor,
-  SandpackFileExplorer,
   Navigator,
   useSandpack,
   useActiveCode,
 } from '@codesandbox/sandpack-react'
+import { FileExplorer } from './FileTree'
 import {
   Monitor,
   Smartphone,
@@ -241,6 +241,9 @@ export function WorkspacePanel({
   onSyncFiles,
   onDiscard,
   onSave,
+  onCreateFile,
+  onCreateFolder,
+  onDeleteEntry,
 }: {
   fileTree: FileTree
   projectName?: string
@@ -251,6 +254,9 @@ export function WorkspacePanel({
   onSyncFiles?: (files: FileTree) => void
   onDiscard?: () => void
   onSave?: () => void
+  onCreateFile?: (path: string) => void
+  onCreateFolder?: (folderPath: string) => void
+  onDeleteEntry?: (path: string) => void
 }) {
   const [tab, setTab] = useState<Tab>('preview')
   const [device, setDevice] = useState<Device>('desktop')
@@ -330,7 +336,12 @@ export function WorkspacePanel({
                   tab === 'code' ? 'flex min-h-0 flex-1 select-text' : 'hidden'
                 }
               >
-                <SandpackFileExplorer style={{ height: '100%', width: 200 }} />
+                <FileExplorer
+                  fileTree={fileTree}
+                  onCreateFile={onCreateFile ?? (() => {})}
+                  onCreateFolder={onCreateFolder ?? (() => {})}
+                  onDelete={onDeleteEntry ?? (() => {})}
+                />
                 <div className="flex min-w-0 flex-1 flex-col">
                   <CodeBar editable={editable} setEditable={setEditable} />
                   <SandpackCodeEditor

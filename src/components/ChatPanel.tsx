@@ -13,6 +13,7 @@ export function ChatPanel({
   error,
   activity,
   streamingMessage,
+  filePaths,
   onSend,
 }: {
   projectName: string
@@ -22,6 +23,7 @@ export function ChatPanel({
   error: string | null
   activity: Activity[]
   streamingMessage: string
+  filePaths: string[]
   onSend: (text: string) => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
@@ -71,7 +73,7 @@ export function ChatPanel({
         <div ref={endRef} />
       </div>
       <div className="border-t border-zinc-800 p-4">
-        <PromptInput onSend={onSend} busy={busy} />
+        <PromptInput onSend={onSend} busy={busy} filePaths={filePaths} />
       </div>
     </section>
   )

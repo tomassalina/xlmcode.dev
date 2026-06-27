@@ -16,6 +16,8 @@ export function Editor() {
     syncFiles,
     discardEdits,
     markSaved,
+    createEntry,
+    deleteEntry,
   } = useProjects()
   const project = slug ? getProject(slug) : undefined
   // While dragging the divider, kill pointer events on the preview so the
@@ -36,6 +38,7 @@ export function Editor() {
           error={project.error}
           activity={project.activity}
           streamingMessage={project.streamingMessage}
+          filePaths={Object.keys(project.fileTree)}
           onSend={(text) => send(project.slug, text)}
         />
       </Panel>
@@ -55,6 +58,11 @@ export function Editor() {
             onSyncFiles={(files) => syncFiles(project.slug, files)}
             onDiscard={() => discardEdits(project.slug)}
             onSave={() => markSaved(project.slug)}
+            onCreateFile={(path) => createEntry(project.slug, path)}
+            onCreateFolder={(folder) =>
+              createEntry(project.slug, `${folder}/.keep`)
+            }
+            onDeleteEntry={(path) => deleteEntry(project.slug, path)}
           />
         </div>
       </Panel>

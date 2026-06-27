@@ -70,6 +70,10 @@ interface ProjectsContextValue {
   discardEdits: (slug: string) => void
   /** Accept the current edits as the saved baseline (clears the dirty toast). */
   markSaved: (slug: string) => void
+  /** Create a file (or folder via a placeholder) at an absolute path. */
+  createEntry: (slug: string, path: string, content?: string) => void
+  /** Delete a file or a whole folder subtree at an absolute path. */
+  deleteEntry: (slug: string, path: string) => void
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null)
@@ -247,6 +251,37 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     patch(slug, { savedFileTree: p.fileTree, dirty: false })
   }
 
+  /** Create a file/folder; structural change → bump generation (remount). */
+  const createEntry = (slug: string, path: string, content = '') => {
+    const p = ref.current[slug]
+    if (!p || p.fileTree[path] !== undefined) return
+    const next = { ...p.fileTree, [path]: content }
+    patch(slug, {
+      fileTree: next,
+      savedFileTree: next,
+      dirty: false,
+      generation: p.generation + 1,
+    })
+  }
+
+  /** Delete a file or an entire folder subtree. */
+  const deleteEntry = (slug: string, path: string) => {
+    const p = ref.current[slug]
+    if (!p) return
+    const prefix = `${path}/`
+    const next: FileTree = {}
+    for (const [k, v] of Object.entries(p.fileTree)) {
+      if (k === path || k.startsWith(prefix)) continue
+      next[k] = v
+    }
+    patch(slug, {
+      fileTree: next,
+      savedFileTree: next,
+      dirty: false,
+      generation: p.generation + 1,
+    })
+  }
+
   const renameProject = (slug: string, name: string) => {
     const trimmed = name.trim()
     if (trimmed) patch(slug, { name: trimmed })
@@ -263,6 +298,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     syncFiles,
     discardEdits,
     markSaved,
+    createEntry,
+    deleteEntry,
   }
 
   return (
