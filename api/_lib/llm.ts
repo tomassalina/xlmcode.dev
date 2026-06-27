@@ -1,0 +1,40 @@
+import { generateObject } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+import { agentResponseSchema, type AgentResponse } from '../../shared/schema'
+import { buildSystemPrompt } from './prompt'
+import type { ChatMessage, FileTree, Manifest } from '../../shared/types'
+
+const DEFAULT_MODEL = 'gpt-5.4-mini'
+
+/**
+ * The provider-agnostic core of /api/chat. Kept free of any Vercel/HTTP types
+ * so it can be called from the serverless handler AND the local dev middleware.
+ *
+ * Uses the Vercel AI SDK's `generateObject`: the Zod schema is the contract, and
+ * the SDK validates the model output before it reaches us (PLAN.md §5.3).
+ */
+export async function runChat(params: {
+  apiKey: string
+  fileTree: FileTree
+  history: ChatMessage[]
+  userMessage: string
+  catalog?: Manifest[]
+  model?: string
+}): Promise<AgentResponse> {
+  const { apiKey, fileTree, history, userMessage } = params
+  const model = params.model ?? process.env.OPENAI_MODEL ?? DEFAULT_MODEL
+
+  const openai = createOpenAI({ apiKey })
+
+  const { object } = await generateObject({
+    model: openai(model),
+    schema: agentResponseSchema,
+    system: buildSystemPrompt({ fileTree, catalog: params.catalog ?? [] }),
+    messages: [
+      ...history.map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user' as const, content: userMessage },
+    ],
+  })
+
+  return object
+}

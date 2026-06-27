@@ -1,0 +1,22 @@
+{
+  "id": "oz-fungible-token",
+  "name": "Fungible Token",
+  "description": "Configurable standard token (name, symbol, initial supply).",
+  "type": "deployable",
+  "category": "token",
+  "wasmPath": "contracts/wasm/oz_fungible_token.wasm",
+  "init": {
+    "method": "__constructor",
+    "argsFromConfig": ["owner", "name", "symbol", "initial_supply"]
+  },
+  "config": [
+    { "key": "name", "label": "Token name", "type": "string", "default": "MyToken" },
+    { "key": "symbol", "label": "Symbol", "type": "string", "default": "MTK" },
+    { "key": "initial_supply", "label": "Initial supply", "type": "number", "default": 1000000 }
+  ],
+  "methods": [
+    { "name": "balance", "args": ["address"], "returns": "i128", "mutates": false },
+    { "name": "transfer", "args": ["from", "to", "amount"], "returns": "void", "mutates": true },
+    { "name": "total_supply", "args": [], "returns": "i128", "mutates": false }
+  ]
+}

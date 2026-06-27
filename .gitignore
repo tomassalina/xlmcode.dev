@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Reference scaffolds for analysis (not part of the app)
+_reference/
+
+# Vercel
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
