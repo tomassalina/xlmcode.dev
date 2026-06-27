@@ -28,7 +28,7 @@ export function ChatPanel({
 
   return (
     <section className="flex h-full flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="flex-1 select-text space-y-4 overflow-y-auto p-4">
         {messages.map((m, i) => (
           <Message key={i} role={m.role} content={m.content} />
         ))}

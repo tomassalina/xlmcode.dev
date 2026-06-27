@@ -12,7 +12,7 @@ export function AppShell() {
   if (!user) return <Navigate to="/" replace />
 
   return (
-    <div className="flex h-full bg-black text-zinc-50">
+    <div className="flex h-full select-none bg-black text-zinc-50">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Outlet />

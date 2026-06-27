@@ -227,7 +227,11 @@ export function WorkspacePanel({
                   </div>
                 </div>
               </div>
-              <div className={tab === 'code' ? 'flex min-h-0 flex-1' : 'hidden'}>
+              <div
+                className={
+                  tab === 'code' ? 'flex min-h-0 flex-1 select-text' : 'hidden'
+                }
+              >
                 <SandpackFileExplorer style={{ height: '100%', width: 200 }} />
                 <SandpackCodeEditor
                   readOnly

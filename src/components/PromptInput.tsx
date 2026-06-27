@@ -37,7 +37,7 @@ export function PromptInput({
         onKeyDown={onKeyDown}
         rows={2}
         placeholder={placeholder}
-        className="max-h-40 w-full resize-none bg-transparent px-2 py-1.5 text-[14px] text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
+        className="max-h-40 w-full select-text resize-none bg-transparent px-2 py-1.5 text-[14px] text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
       />
       <div className="flex items-center justify-between px-1 pt-1">
         <span className="text-[11px] text-zinc-600">↵ to send · ⇧↵ newline</span>

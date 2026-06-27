@@ -29,7 +29,7 @@ export function MarketingLanding() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-black text-zinc-50">
+    <div className="flex h-full select-none flex-col overflow-y-auto bg-black text-zinc-50">
       {/* Top nav */}
       <header className="flex h-16 shrink-0 items-center justify-between px-6">
         <div className="flex items-center gap-2">
