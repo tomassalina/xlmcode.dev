@@ -95,10 +95,27 @@ pnpm dev
 \`\`\`
 `
 
+// The HTML host page. Tailwind is loaded via its CDN here (and also injected
+// into the preview by Sandpack). Keep the #root mount point.
+const INDEX_HTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stellar App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+`
+
 /** Files present in every project regardless of content. */
 const BASE_FILES: FileTree = {
   '/package.json': PACKAGE_JSON,
   '/README.md': README,
+  '/public/index.html': INDEX_HTML,
 }
 
 /** Merge the base project files under a set of app files. */

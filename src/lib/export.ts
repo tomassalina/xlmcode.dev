@@ -109,7 +109,12 @@ Tailwind is loaded via CDN in \`index.html\` — no build config needed.
 }
 
 /** Files from the preview tree that the export replaces with the real scaffold. */
-const REPLACED = new Set(['/package.json', '/README.md', '/index.html'])
+const REPLACED = new Set([
+  '/package.json',
+  '/README.md',
+  '/index.html',
+  '/public/index.html',
+])
 
 /** Build the complete exportable Vite project tree. Pure. */
 export function buildExportTree(fileTree: FileTree): FileTree {
