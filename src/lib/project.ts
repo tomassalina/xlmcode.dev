@@ -152,7 +152,7 @@ if (!g.Buffer) g.Buffer = Buffer
 
 /** Shared, pre-deployed Demo fungible token on testnet. Its owner secret lives
  *  in FAUCET_SECRET so /api/faucet can mint test tokens to connected wallets. */
-const DEMO_TOKEN_ID = 'CD3U7DUAURF7JWNBVVGSF2KRRVNAMDA3QAFI2FCW77XJGVKLKC56736D'
+const DEMO_TOKEN_ID = 'CD7XBRBY2IZASZIXZYXWR33ZUSUBUTXTY5MEGDLCAMOBVGQSLU6X675M'
 const DEMO_TOKEN_VIEW_SOURCE =
   'GBDFURES5STGVPMBLLPK4DAL5H2LKRETUSWC7T2YSVJO7PGFKN57DIQS'
 
@@ -210,6 +210,24 @@ export async function readContract(
 
 export const addr = (a: string) => new Address(a).toScVal()
 export const i128 = (n: bigint | number) => nativeToScVal(BigInt(n), { type: 'i128' })
+
+/** Human amount -> base units (scaled by the token's decimals). */
+export function toUnits(human: string | number, decimals: number): bigint {
+  const s = String(human).trim()
+  const [whole, frac = ''] = s.split('.')
+  const fracPadded = (frac + '0'.repeat(decimals)).slice(0, decimals)
+  return BigInt(whole || '0') * 10n ** BigInt(decimals) + BigInt(fracPadded || '0')
+}
+
+/** Base units -> human string (trims trailing zeros; thousands separators). */
+export function fromUnits(raw: bigint | string, decimals: number): string {
+  const v = BigInt(raw)
+  const base = 10n ** BigInt(decimals)
+  const whole = v / base
+  const frac = (v % base).toString().padStart(decimals, '0').replace(/0+$/, '')
+  const wholeStr = whole.toLocaleString('en-US')
+  return frac ? wholeStr + '.' + frac : wholeStr
+}
 
 // Browser extensions inject only into the top frame, never the cross-origin
 // Sandpack preview iframe. So in the preview we delegate wallet ops to the host
@@ -333,6 +351,8 @@ import {
   claimTokens,
   addr,
   i128,
+  toUnits,
+  fromUnits,
 } from './stellar'
 
 const TOKEN_ID = '${DEMO_TOKEN_ID}'
@@ -349,6 +369,7 @@ export default function App() {
   const [balance, setBalance] = useState<string | null>(null)
   const [to, setTo] = useState('')
   const [amount, setAmount] = useState('100')
+  const [decimals, setDecimals] = useState(18)
   const [busy, setBusy] = useState<'' | 'connect' | 'claim' | 'send'>('')
   const [toast, setToast] = useState<Toast>(null)
 
@@ -357,12 +378,14 @@ export default function App() {
 
   const loadMeta = useCallback(async () => {
     try {
-      const [name, symbol, supply] = await Promise.all([
+      const [name, symbol, supply, dec] = await Promise.all([
         readContract(TOKEN_ID, 'name', VIEW_SOURCE),
         readContract(TOKEN_ID, 'symbol', VIEW_SOURCE),
         readContract(TOKEN_ID, 'total_supply', VIEW_SOURCE),
+        readContract(TOKEN_ID, 'decimals', VIEW_SOURCE),
       ])
       setMeta({ name, symbol, supply: String(supply) })
+      setDecimals(Number(dec))
     } catch (e: any) { flash({ kind: 'err', text: e.message }) }
   }, [])
 
@@ -398,7 +421,7 @@ export default function App() {
     if (!address || !to) return
     setBusy('send')
     try {
-      const hash = await invokeContract(TOKEN_ID, 'transfer', address, [addr(address), addr(to), i128(amount)])
+      const hash = await invokeContract(TOKEN_ID, 'transfer', address, [addr(address), addr(to), i128(toUnits(amount, decimals))])
       await loadBalance(address)
       setTo('')
       flash({ kind: 'ok', text: 'Sent ' + fmt(amount) + ' ' + sym + ' · ' + short(hash) })
@@ -440,12 +463,12 @@ export default function App() {
           </p>
           <p className="mt-1 text-4xl font-bold tracking-tight">
             {address
-              ? balance === null ? '—' : fmt(balance)
-              : meta ? fmt(meta.supply) : '—'}
+              ? balance === null ? '—' : fromUnits(balance, decimals)
+              : meta ? fromUnits(meta.supply, decimals) : '—'}
             <span className="ml-2 text-lg font-medium text-indigo-200">{sym}</span>
           </p>
           {address && meta && (
-            <p className="mt-2 text-xs text-indigo-200">Total supply · {fmt(meta.supply)} {sym}</p>
+            <p className="mt-2 text-xs text-indigo-200">Total supply · {fromUnits(meta.supply, decimals)} {sym}</p>
           )}
         </div>
 

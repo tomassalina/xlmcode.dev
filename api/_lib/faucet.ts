@@ -23,7 +23,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /** The shared Demo fungible token (must match DEMO_TOKEN_ID in src/lib/project.ts). */
 export const DEMO_TOKEN_ID =
-  'CD3U7DUAURF7JWNBVVGSF2KRRVNAMDA3QAFI2FCW77XJGVKLKC56736D'
+  'CD7XBRBY2IZASZIXZYXWR33ZUSUBUTXTY5MEGDLCAMOBVGQSLU6X675M'
+
+/** The token uses 18 decimals (OZ default), so amounts are scaled by 10^18. */
+const DECIMALS = 18n
 
 /** Mint `amount` Demo tokens to `to`. Returns the tx hash. `secret` defaults to
  *  process.env (Vercel); the dev middleware passes it from loadEnv explicitly. */
@@ -47,7 +50,8 @@ export async function mintDemoTokens(
         contract.call(
           'mint',
           new Address(to).toScVal(),
-          nativeToScVal(BigInt(amount), { type: 'i128' }),
+          // Scale the human amount by the token's decimals.
+          nativeToScVal(BigInt(amount) * 10n ** DECIMALS, { type: 'i128' }),
         ),
       )
       .setTimeout(60)

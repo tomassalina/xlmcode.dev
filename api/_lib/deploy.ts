@@ -49,7 +49,11 @@ function toScVal(
       value === '{{deployer}}' || !value ? deployerPk : String(value)
     return new Address(addr).toScVal()
   }
-  if (scType === 'i128') return nativeToScVal(BigInt(Number(value)), { type: 'i128' })
+  if (scType === 'i128')
+    return nativeToScVal(
+      BigInt(typeof value === 'number' ? Math.trunc(value) : String(value).trim()),
+      { type: 'i128' },
+    )
   if (scType === 'u32') return nativeToScVal(Number(value), { type: 'u32' })
   if (scType === 'u64') return nativeToScVal(BigInt(Number(value)), { type: 'u64' })
   if (scType === 'bool') return nativeToScVal(Boolean(value))
