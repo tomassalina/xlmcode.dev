@@ -52,25 +52,34 @@ function SandpackSync({
     ftRef.current = fileTree
   }, [fileTree])
 
-  // Sandpack normalizes line endings / trailing newline, so compare normalized
-  // content — otherwise the round-trip looks "edited" on load and after discard.
-  const norm = (s: string) => s.replace(/\r\n/g, '\n').replace(/\s+$/, '')
+  // Baseline = Sandpack's OWN view of the files once loaded. We only report an
+  // edit (→ dirty) when the live files deviate from that baseline. This avoids
+  // false "unsaved edits" on load / agent changes / restore: each of those
+  // remounts SandpackProvider (key=generation), which remounts this component
+  // and re-establishes the baseline. Only genuine in-editor typing deviates.
+  const baselineRef = useRef<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => {
       const ft = ftRef.current
-      const next: FileTree = {}
-      let changed = false
+      const current: FileTree = {}
+      let allLoaded = true
       for (const path of Object.keys(ft)) {
         const code = sandpack.files[path]?.code
-        if (code !== undefined) {
-          next[path] = code
-          if (norm(code) !== norm(ft[path])) changed = true
+        if (code === undefined) {
+          allLoaded = false
+          current[path] = ft[path]
         } else {
-          next[path] = ft[path]
+          current[path] = code
         }
       }
-      if (changed) onSync(next)
+      const key = JSON.stringify(current)
+      if (baselineRef.current === null) {
+        // Establish the baseline once Sandpack has loaded our files.
+        if (allLoaded) baselineRef.current = key
+        return
+      }
+      if (key !== baselineRef.current) onSync(current)
     }, 600)
     return () => clearTimeout(t)
   }, [sandpack.files, onSync])

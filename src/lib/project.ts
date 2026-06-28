@@ -180,12 +180,7 @@ const STELLAR_LIB = `import {
   nativeToScVal,
   scValToNative,
 } from '@stellar/stellar-sdk'
-import {
-  isConnected,
-  requestAccess,
-  getAddress,
-  signTransaction,
-} from '@stellar/freighter-api'
+import freighterApi from '@stellar/freighter-api'
 
 export const RPC_URL = 'https://soroban-testnet.stellar.org'
 export const NETWORK_PASSPHRASE = Networks.TESTNET
@@ -215,23 +210,60 @@ export async function readContract(
 export const addr = (a: string) => new Address(a).toScVal()
 export const i128 = (n: bigint | number) => nativeToScVal(BigInt(n), { type: 'i128' })
 
+// Browser extensions inject only into the top frame, never the cross-origin
+// Sandpack preview iframe. So in the preview we delegate wallet ops to the host
+// window (which DOES have Freighter) over postMessage; standalone/exported apps
+// (top-level) talk to Freighter directly.
+const inIframe = typeof window !== 'undefined' && window.parent !== window.self
+
+function bridge(method: string, extra: Record<string, unknown> = {}): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const id = Math.random().toString(36).slice(2)
+    const onMsg = (e: MessageEvent) => {
+      const m = e.data
+      if (!m || m.source !== 'stellarable-host' || m.id !== id) return
+      window.removeEventListener('message', onMsg)
+      if (m.error) reject(new Error(m.error))
+      else resolve(m.result)
+    }
+    window.addEventListener('message', onMsg)
+    window.parent.postMessage({ source: 'stellarable-dapp', id, method, ...extra }, '*')
+    setTimeout(() => {
+      window.removeEventListener('message', onMsg)
+      reject(new Error('Wallet request timed out'))
+    }, 120000)
+  })
+}
+
 /** Connect Freighter and return the user's address. */
 export async function connectWallet(): Promise<string> {
-  const c = await isConnected()
+  if (inIframe) return bridge('getAddress')
+  const c = await freighterApi.isConnected()
   if (!c.isConnected) throw new Error('Freighter is not installed. Get it at freighter.app')
-  const access = await requestAccess()
-  if (access.error) throw new Error(access.error)
+  const access = await freighterApi.requestAccess()
+  if (access.error) throw new Error(String(access.error))
   return access.address
 }
 
 export async function getConnectedAddress(): Promise<string | null> {
-  const c = await isConnected()
+  if (inIframe) return null // require an explicit Connect click inside the preview
+  const c = await freighterApi.isConnected()
   if (!c.isConnected) return null
-  const a = await getAddress()
+  const a = await freighterApi.getAddress()
   return a.address || null
 }
 
-/** Build, Freighter-sign and submit a contract write. Returns the tx hash. */
+async function signXDR(xdr: string, address: string): Promise<string> {
+  if (inIframe) return bridge('signXDR', { xdr, address, networkPassphrase: NETWORK_PASSPHRASE })
+  const s = await freighterApi.signTransaction(xdr, {
+    networkPassphrase: NETWORK_PASSPHRASE,
+    address,
+  })
+  if (s.error) throw new Error(String(s.error))
+  return s.signedTxXdr
+}
+
+/** Build, sign (Freighter, via host bridge in the preview) and submit a write. */
 export async function invokeContract(
   contractId: string,
   method: string,
@@ -248,12 +280,8 @@ export async function invokeContract(
     .setTimeout(60)
     .build()
   const prepared = await server.prepareTransaction(tx)
-  const signed = await signTransaction(prepared.toXDR(), {
-    networkPassphrase: NETWORK_PASSPHRASE,
-    address: caller,
-  })
-  if (signed.error) throw new Error(String(signed.error))
-  const txObj = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const signedXdr = await signXDR(prepared.toXDR(), caller)
+  const txObj = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE)
   const sent = await server.sendTransaction(txObj as any)
   if (sent.status === 'ERROR') throw new Error(JSON.stringify(sent.errorResult))
   let got = await server.getTransaction(sent.hash)
