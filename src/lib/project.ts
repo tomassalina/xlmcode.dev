@@ -228,12 +228,21 @@ export async function getOwnedNftIds(
   const candidates = new Set<number>()
   for (const ev of res.events ?? []) {
     try {
-      const parts = [
-        ...(ev.topic as any[]).map((t) => scValToNative(t)),
-        scValToNative(ev.value as any),
-      ]
-      for (const p of parts) {
-        const n = Number(p)
+      const val = scValToNative(ev.value as any)
+      const nums: unknown[] = []
+      // Mint event data is an object like { token_id: 0 }; transfers carry the id
+      // in the value or topics. Gather every plausible token id.
+      if (val && typeof val === 'object') {
+        for (const k of ['token_id', 'tokenId', 'id'])
+          if (k in (val as any)) nums.push((val as any)[k])
+      } else {
+        nums.push(val)
+      }
+      for (const t of ev.topic as any[]) {
+        try { nums.push(scValToNative(t)) } catch {}
+      }
+      for (const x of nums) {
+        const n = Number(x)
         if (Number.isInteger(n) && n >= 0 && n < 100000) candidates.add(n)
       }
     } catch {}
@@ -274,7 +283,11 @@ export async function getTokenActivity(
     try {
       const topic = (ev.topic as any[]).map((t) => scValToNative(t))
       const name = String(topic[0])
-      const amount = fromUnits(BigInt(scValToNative(ev.value as any)), decimals)
+      // Event data is a scalar i128 for transfer, but an object { amount } for mint.
+      const raw = scValToNative(ev.value as any)
+      const amountVal =
+        raw && typeof raw === 'object' && 'amount' in raw ? (raw as any).amount : raw
+      const amount = fromUnits(BigInt(amountVal), decimals)
       const time = (ev as any).ledgerClosedAt ?? ''
       const txHash = (ev as any).txHash ?? ''
       if (name === 'transfer') {
