@@ -596,21 +596,9 @@ export async function invokeContract(
   caller: string,
   args: any[] = [],
 ): Promise<string> {
-  const c = new Contract(contractId)
-  const source = await server.getAccount(caller)
-  const tx = new TransactionBuilder(source, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(c.call(method, ...args))
-    .setTimeout(60)
-    .build()
-  const prepared = await server.prepareTransaction(tx)
-  const signedXdr = await signXDR(prepared.toXDR(), caller)
-  // Submit the signed XDR via the raw Soroban JSON-RPC. We deliberately do NOT
-  // re-parse the signed envelope client-side (TransactionBuilder.fromXDR), which
-  // can throw "Bad union switch" when the signer emits a newer XDR than this
-  // SDK build understands. The RPC parses it server-side.
+  // Submit via the raw Soroban JSON-RPC. We deliberately do NOT re-parse the
+  // signed envelope client-side (TransactionBuilder.fromXDR), which can throw
+  // "Bad union switch" when the signer emits newer XDR than this SDK build.
   const rpcCall = async (m: string, params: any) => {
     const res = await fetch(RPC_URL, {
       method: 'POST',
@@ -621,17 +609,45 @@ export async function invokeContract(
     if (j.error) throw new Error(j.error.message || JSON.stringify(j.error))
     return j.result
   }
-  const sent = await rpcCall('sendTransaction', { transaction: signedXdr })
-  if (sent.status === 'ERROR') {
-    throw new Error('Submit failed: ' + (sent.errorResultXdr || JSON.stringify(sent)))
+  const isBadSeq = (resultXdr: string) => {
+    try {
+      return xdr.TransactionResult.fromXDR(resultXdr, 'base64').result().switch().name === 'txBadSeq'
+    } catch { return false }
   }
-  for (let i = 0; i < 25; i++) {
-    const got = await rpcCall('getTransaction', { hash: sent.hash })
-    if (got.status === 'SUCCESS') return sent.hash
-    if (got.status === 'FAILED') throw new Error('Transaction failed on-chain')
-    await new Promise((r) => setTimeout(r, 1000))
+  // The public testnet RPC is load-balanced and can hand back a stale account
+  // sequence right after a previous tx -> txBadSeq. Re-fetch the account and
+  // retry (only on txBadSeq, which means the tx was rejected, never executed).
+  let lastErr = ''
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const c = new Contract(contractId)
+    const source = await server.getAccount(caller)
+    const tx = new TransactionBuilder(source, {
+      fee: BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(c.call(method, ...args))
+      .setTimeout(60)
+      .build()
+    const prepared = await server.prepareTransaction(tx)
+    const signedXdr = await signXDR(prepared.toXDR(), caller)
+    const sent = await rpcCall('sendTransaction', { transaction: signedXdr })
+    if (sent.status === 'ERROR') {
+      if (isBadSeq(sent.errorResultXdr) && attempt < 3) {
+        lastErr = 'txBadSeq'
+        await new Promise((r) => setTimeout(r, 1500))
+        continue
+      }
+      throw new Error('Submit failed: ' + (sent.errorResultXdr || JSON.stringify(sent)))
+    }
+    for (let i = 0; i < 25; i++) {
+      const got = await rpcCall('getTransaction', { hash: sent.hash })
+      if (got.status === 'SUCCESS') return sent.hash
+      if (got.status === 'FAILED') throw new Error('Transaction failed on-chain')
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+    throw new Error('Transaction timed out')
   }
-  throw new Error('Transaction timed out')
+  throw new Error('Submit failed after retries (' + lastErr + ')')
 }
 `
 
@@ -1316,25 +1332,6 @@ export default function Header({ address, busy, onConnect, onDisconnect }: Props
 }
 `
 
-const DEMO_SWAP_TABS = `interface Props {
-  tab: 'swap' | 'history'
-  onChange: (t: 'swap' | 'history') => void
-}
-
-export default function Tabs({ tab, onChange }: Props) {
-  return (
-    <div className="mb-3 flex gap-1 rounded-full bg-slate-100 p-1">
-      {(['swap', 'history'] as const).map((t) => (
-        <button key={t} onClick={() => onChange(t)}
-          className={'flex-1 rounded-full py-1.5 text-xs font-semibold transition ' + (tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>
-          {t === 'swap' ? 'Swap' : 'History'}
-        </button>
-      ))}
-    </div>
-  )
-}
-`
-
 const DEMO_SWAP_TOKENPANEL = `import { fmt } from '../lib'
 
 interface Token { sym: string; badge: string; badgeBg: string }
@@ -1468,60 +1465,6 @@ export default function SwapCard(p: Props) {
 }
 `
 
-const DEMO_SWAP_HISTORY = `import { ago } from '../lib'
-
-interface Swap {
-  paid: string
-  paidSym: string
-  received: string
-  recvSym: string
-  time: string
-  txHash: string
-}
-
-interface Props {
-  history: Swap[]
-  loading: boolean
-  address: string | null
-}
-
-export default function HistoryList({ history, loading, address }: Props) {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/50">
-      <p className="mb-3 text-sm font-semibold">Your swaps</p>
-      {!address ? (
-        <p className="text-xs text-slate-400">Connect your wallet to see your swap history.</p>
-      ) : loading && history.length === 0 ? (
-        <p className="text-xs text-slate-400">Loading…</p>
-      ) : history.length === 0 ? (
-        <p className="text-xs text-slate-400">No swaps yet. Make your first swap!</p>
-      ) : (
-        <ul className="space-y-1">
-          {history.map((s, i) => (
-            <li key={s.txHash || i}>
-              <a href={s.txHash ? 'https://stellar.expert/explorer/testnet/tx/' + s.txHash : undefined}
-                target="_blank" rel="noreferrer"
-                className={'-mx-2 flex items-center justify-between gap-2 rounded-lg px-2 py-2 text-sm transition ' + (s.txHash ? 'hover:bg-slate-50' : '')}>
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-xs text-emerald-600">⇄</span>
-                  <div>
-                    <p className="font-medium leading-none">
-                      {s.paid} {s.paidSym} → {s.received} {s.recvSym}
-                      {s.txHash && <span className="ml-1 text-[10px] text-slate-400">↗</span>}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">{ago(s.time)}</p>
-                  </div>
-                </div>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-`
-
 const DEMO_SWAP_TOAST = `import type { Toast } from '../lib'
 
 export default function ToastBar({ toast }: { toast: Toast }) {
@@ -1542,7 +1485,6 @@ import {
   connectWallet,
   getConnectedAddress,
   invokeContract,
-  getSwapHistory,
   fundWithFriendbot,
   addr,
   i128,
@@ -1553,9 +1495,7 @@ import {
 import { ROUTER, XLM, USDC, VIEW_SOURCE, DEC, TOKENS, EXPLORER, short, fmt } from './lib'
 import type { Toast } from './lib'
 import Header from './components/Header'
-import Tabs from './components/Tabs'
 import SwapCard from './components/SwapCard'
-import HistoryList from './components/HistoryList'
 import ToastBar from './components/Toast'
 
 export default function App() {
@@ -1568,9 +1508,6 @@ export default function App() {
   const [busy, setBusy] = useState<'' | 'connect' | 'fund' | 'swap'>('')
   const [toast, setToast] = useState<Toast>(null)
   const [dir, setDir] = useState<'XLM_USDC' | 'USDC_XLM'>('XLM_USDC')
-  const [tab, setTab] = useState<'swap' | 'history'>('swap')
-  const [history, setHistory] = useState<any[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
 
   const pay = dir === 'XLM_USDC' ? TOKENS.XLM : TOKENS.USDC
   const recv = dir === 'XLM_USDC' ? TOKENS.USDC : TOKENS.XLM
@@ -1590,22 +1527,9 @@ export default function App() {
     } catch (e: any) { flash({ kind: 'err', text: e.message }) }
   }, [])
 
-  const loadHistory = useCallback(async (a: string) => {
-    setLoadingHistory(true)
-    try {
-      // Anchor on USDC (the quiet token); XLM is too busy to anchor on.
-      const fetched = await getSwapHistory(a, TOKENS.XLM, TOKENS.USDC, DEC)
-      setHistory((prev) => {
-        const seen = new Set(fetched.map((s) => s.txHash).filter(Boolean))
-        const pending = prev.filter((s) => s.txHash && !seen.has(s.txHash))
-        return [...pending, ...fetched]
-      })
-    } catch {} finally { setLoadingHistory(false) }
-  }, [])
-
   useEffect(() => {
-    getConnectedAddress().then((a) => { if (a) { setAddress(a); loadBalances(a); loadHistory(a) } })
-  }, [loadBalances, loadHistory])
+    getConnectedAddress().then((a) => { if (a) { setAddress(a); loadBalances(a) } })
+  }, [loadBalances])
 
   // Live quote (debounced): how much of recv \`amount\` of pay buys.
   useEffect(() => {
@@ -1629,12 +1553,12 @@ export default function App() {
 
   const connect = async () => {
     setBusy('connect')
-    try { const a = await connectWallet(); setAddress(a); await loadBalances(a); loadHistory(a) }
+    try { const a = await connectWallet(); setAddress(a); await loadBalances(a) }
     catch (e: any) { flash({ kind: 'err', text: e.message }) }
     finally { setBusy('') }
   }
 
-  const disconnect = () => { setAddress(null); setXlmBal(null); setUsdcBal(null); setHistory([]) }
+  const disconnect = () => { setAddress(null); setXlmBal(null); setUsdcBal(null) }
 
   const flip = () => {
     setAmount(quote != null ? String(quote) : '')
@@ -1672,13 +1596,8 @@ export default function App() {
         u64(deadline),
       ])
       const recvAmt = fmt(Number(out) / 10 ** DEC)
-      setHistory((prev) => [
-        { paid: fmt(amount), paidSym: pay.sym, received: recvAmt, recvSym: recv.sym, time: new Date().toISOString(), txHash: hash },
-        ...prev,
-      ])
       flash({ kind: 'ok', text: 'Swapped ' + fmt(amount) + ' ' + pay.sym + ' → ' + recvAmt + ' ' + recv.sym + ' · ' + short(hash) })
       await loadBalances(address)
-      loadHistory(address)
     } catch (e: any) { flash({ kind: 'err', text: e.message }) }
     finally { setBusy('') }
   }
@@ -1697,32 +1616,27 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-emerald-50/40 px-4 py-10 font-sans text-slate-900">
       <div className="mx-auto w-full max-w-md">
         <Header address={address} busy={busy === 'connect'} onConnect={connect} onDisconnect={disconnect} />
-        <Tabs tab={tab} onChange={setTab} />
-        {tab === 'swap' ? (
-          <SwapCard
-            pay={pay}
-            recv={recv}
-            payBal={payBal}
-            recvBal={recvBal}
-            address={address}
-            amount={amount}
-            onAmount={setAmount}
-            onMax={setMax}
-            maxDisabled={!maxSpend}
-            insufficient={insufficient}
-            quote={quote}
-            quoting={quoting}
-            rate={rate}
-            amt={amt}
-            busy={busy}
-            onConnect={connect}
-            onSwap={swap}
-            onFlip={flip}
-            onFund={fund}
-          />
-        ) : (
-          <HistoryList history={history} loading={loadingHistory} address={address} />
-        )}
+        <SwapCard
+          pay={pay}
+          recv={recv}
+          payBal={payBal}
+          recvBal={recvBal}
+          address={address}
+          amount={amount}
+          onAmount={setAmount}
+          onMax={setMax}
+          maxDisabled={!maxSpend}
+          insufficient={insufficient}
+          quote={quote}
+          quoting={quoting}
+          rate={rate}
+          amt={amt}
+          busy={busy}
+          onConnect={connect}
+          onSwap={swap}
+          onFlip={flip}
+          onFund={fund}
+        />
 
         <a href={EXPLORER} target="_blank" rel="noreferrer"
           className="mt-4 block text-center text-xs text-slate-400 transition hover:text-slate-600">
@@ -1826,10 +1740,8 @@ export const EXAMPLE_APPS: ExampleApp[] = [
       '/stellar.ts': STELLAR_LIB,
       '/lib.ts': DEMO_SWAP_LIB,
       '/components/Header.tsx': DEMO_SWAP_HEADER,
-      '/components/Tabs.tsx': DEMO_SWAP_TABS,
       '/components/TokenPanel.tsx': DEMO_SWAP_TOKENPANEL,
       '/components/SwapCard.tsx': DEMO_SWAP_CARD,
-      '/components/HistoryList.tsx': DEMO_SWAP_HISTORY,
       '/components/Toast.tsx': DEMO_SWAP_TOAST,
       '/App.tsx': DEMO_SWAP_APP,
     }),
