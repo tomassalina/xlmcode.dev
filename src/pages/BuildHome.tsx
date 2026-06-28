@@ -6,13 +6,10 @@ import { EXAMPLE_APPS } from '../lib/project'
 /** Route "/app" — the build home inside the authed shell. */
 export function BuildHome() {
   const navigate = useNavigate()
-  const { createProject, createFromFiles } = useProjects()
+  const { createProject } = useProjects()
 
   const startWithPrompt = (text: string) => {
     navigate(`/projects/${createProject(text)}`)
-  }
-  const startWithExample = (label: string, files: Record<string, string>) => {
-    navigate(`/projects/${createFromFiles(label, files)}`)
   }
 
   return (
@@ -31,7 +28,7 @@ export function BuildHome() {
           {EXAMPLE_APPS.map((ex) => (
             <button
               key={ex.label}
-              onClick={() => startWithExample(ex.label, ex.files)}
+              onClick={() => startWithPrompt(ex.prompt)}
               className="rounded-full border border-zinc-800 px-3 py-1.5 text-[12.5px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200"
             >
               {ex.label}

@@ -68,7 +68,7 @@ interface ProjectsContextValue {
   getProject: (slug: string) => ProjectState | undefined
   createProject: (prompt: string) => string
   createFromFiles: (name: string, files: FileTree) => string
-  send: (slug: string, text: string) => void
+  send: (slug: string, text: string, opts?: { kind?: 'system' }) => void
   /** Load a checkpoint's files non-destructively (keeps all versions). */
   openVersion: (slug: string, versionId: string) => void
   /** Restore to a checkpoint AND discard everything after it (destructive). */
@@ -87,6 +87,8 @@ interface ProjectsContextValue {
   deleteEntry: (slug: string, path: string) => void
   /** Record a deployed/connected contract and inject src/contracts.ts. */
   addDeployedContract: (slug: string, contract: DeployedContract) => void
+  /** Mark the actions on a message as resolved (hides the action cards). */
+  resolveMessageActions: (slug: string, messageIndex: number) => void
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null)
@@ -138,13 +140,15 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     commit({ ...ref.current, [slug]: { ...current, ...partial } })
   }
 
-  const send = async (slug: string, text: string) => {
+  const send = async (slug: string, text: string, opts?: { kind?: 'system' }) => {
     const p = ref.current[slug]
     if (!p || p.busy) return
     const history = p.messages
     const startedAt = now()
+    const userMsg: ChatMessage = { role: 'user', content: text, createdAt: startedAt }
+    if (opts?.kind) userMsg.kind = opts.kind
     patch(slug, {
-      messages: [...history, { role: 'user', content: text, createdAt: startedAt }],
+      messages: [...history, userMsg],
       busy: true,
       error: null,
       activity: [],
@@ -179,8 +183,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           if (!newLines.has(l)) removed++
       }
       const changedFiles = res.files.length > 0
-      const assistantMsg = {
-        role: 'assistant' as const,
+      const assistantMsg: ChatMessage = {
+        role: 'assistant',
         content: res.message,
         files: ops,
         versionName: changedFiles ? name : undefined,
@@ -191,6 +195,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           added,
           removed,
         },
+        ...(res.actions?.length ? { actions: res.actions } : {}),
       }
       patch(slug, {
         busy: false,
@@ -220,6 +225,15 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         error: err instanceof Error ? err.message : 'Something went wrong',
       })
     }
+  }
+
+  const resolveMessageActions = (slug: string, messageIndex: number) => {
+    const p = ref.current[slug]
+    if (!p) return
+    const messages = p.messages.map((m, i) =>
+      i === messageIndex ? { ...m, actionsDone: true } : m,
+    )
+    patch(slug, { messages })
   }
 
   const make = (
@@ -390,7 +404,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     getProject: (slug) => ref.current[slug],
     createProject,
     createFromFiles,
-    send: (slug, text) => void send(slug, text),
+    send: (slug, text, opts) => void send(slug, text, opts),
     openVersion,
     restoreVersion,
     renameProject,
@@ -400,6 +414,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     createEntry,
     deleteEntry,
     addDeployedContract,
+    resolveMessageActions,
   }
 
   return (

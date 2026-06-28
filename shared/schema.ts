@@ -33,6 +33,34 @@ export const fileOpSchema = z.union([
   }),
 ])
 
+/**
+ * An action the agent PROPOSES (it cannot execute directly). The user confirms
+ * each one; the platform runs it and feeds the result back so the agent can
+ * continue. `configJson` is a JSON object string (kept as a string so the schema
+ * stays strict-mode-safe — no open-ended record).
+ */
+export const agentActionSchema = z.union([
+  z.object({
+    type: z.literal('deploy_contract'),
+    manifestId: z
+      .string()
+      .describe('Catalog contract id, e.g. "oz-fungible-token"'),
+    configJson: z
+      .string()
+      .describe(
+        'JSON object string of config values keyed by the manifest config keys, e.g. {"name":"Demo","symbol":"DEMO","initial_supply":1000000}. Omit "owner" to use the user wallet.',
+      ),
+    reason: z
+      .string()
+      .describe('One short sentence shown to the user explaining the deploy'),
+  }),
+  z.object({
+    type: z.literal('create_wallet'),
+    label: z.string().describe('Short label, e.g. "Player 2"'),
+    reason: z.string().describe('One short sentence explaining why'),
+  }),
+])
+
 /** The structured response the LLM must return on every turn. */
 export const agentResponseSchema = z.object({
   message: z
@@ -44,9 +72,15 @@ export const agentResponseSchema = z.object({
       'A very short 2-5 word title for this change, e.g. "Add pricing section". No matter how long the user prompt is, summarize it here.',
     ),
   files: z.array(fileOpSchema).describe('File operations to apply'),
+  actions: z
+    .array(agentActionSchema)
+    .describe(
+      'Contract deploys / wallet creations to PROPOSE this turn. The user confirms each; you then receive the result and continue. Empty array if none.',
+    ),
 })
 
 export type FileOp = z.infer<typeof fileOpSchema>
+export type AgentAction = z.infer<typeof agentActionSchema>
 export type AgentResponse = z.infer<typeof agentResponseSchema>
 
 /**

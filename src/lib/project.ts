@@ -138,102 +138,25 @@ export function applyFileOps(tree: FileTree, ops: FileOp[]): FileTree {
   return next
 }
 
-// --- Static example apps (no LLM): clicking a starter loads these instantly. ---
-
-const HERO_LANDING = `export default function App() {
-  return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-        <span className="text-lg font-bold">Acme</span>
-        <nav className="hidden gap-6 text-sm text-slate-600 sm:flex">
-          <a href="#" className="hover:text-slate-900">Features</a>
-          <a href="#" className="hover:text-slate-900">Pricing</a>
-          <a href="#" className="hover:text-slate-900">About</a>
-        </nav>
-      </header>
-      <main className="mx-auto max-w-3xl px-6 py-24 text-center">
-        <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-          Now on Stellar testnet
-        </span>
-        <h1 className="mt-6 text-5xl font-bold tracking-tight">
-          Build something people love
-        </h1>
-        <p className="mt-6 text-lg text-slate-600">
-          The fastest way to launch your idea on Stellar. Ship in minutes, not months.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <button className="rounded-lg bg-slate-900 px-6 py-3 font-medium text-white transition hover:bg-slate-800">
-            Get started
-          </button>
-          <button className="rounded-lg border border-slate-300 px-6 py-3 font-medium transition hover:bg-slate-50">
-            Learn more
-          </button>
-        </div>
-      </main>
-    </div>
-  )
-}
-`
-
-const TODO_APP = `import { useState } from 'react'
-
-export default function App() {
-  const [items, setItems] = useState<string[]>(['Learn Stellar', 'Ship a dApp'])
-  const [text, setText] = useState('')
-
-  const add = () => {
-    if (!text.trim()) return
-    setItems([...items, text.trim()])
-    setText('')
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 p-6 text-slate-900">
-      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold">Todo List</h1>
-        <div className="mt-4 flex gap-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && add()}
-            placeholder="Add a task"
-            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-500"
-          />
-          <button onClick={add} className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white">
-            Add
-          </button>
-        </div>
-        <ul className="mt-4 space-y-2">
-          {items.map((it, i) => (
-            <li key={i} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
-              <span>{it}</span>
-              <button
-                onClick={() => setItems(items.filter((_, j) => j !== i))}
-                className="text-sm text-slate-400 hover:text-red-500"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  )
-}
-`
+// --- Example starters: prompts that drive the LLM to build (and deploy) a real
+// Stellar dApp from the blank template. Clicking one starts a new project. ---
 
 export interface ExampleApp {
   label: string
-  files: FileTree
+  /** Starter prompt — the LLM builds the dApp from the blank template and
+   *  proposes the contract deploys it needs. */
+  prompt: string
 }
 
 export const EXAMPLE_APPS: ExampleApp[] = [
   {
-    label: 'A landing page with a hero and a call-to-action button',
-    files: withBaseFiles({ '/App.tsx': HERO_LANDING }),
+    label: 'Fungible token dashboard',
+    prompt:
+      'Build a token dashboard. Deploy a fungible token named "Demo" with symbol DEMO and an initial supply of 1,000,000, then show its name, symbol and total supply, plus a form to transfer tokens to an address.',
   },
   {
-    label: 'A todo list with add and delete',
-    files: withBaseFiles({ '/App.tsx': TODO_APP }),
+    label: 'NFT minting app',
+    prompt:
+      'Build an NFT minting app. Deploy an NFT collection named "Demo NFTs" with symbol DNFT, then add a button to mint a token to a chosen address and a list showing the owner of each minted token id.',
   },
 ]

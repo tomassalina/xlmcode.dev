@@ -11,7 +11,8 @@
  * `schema.ts` because it is derived from a Zod schema. Re-exported here so
  * callers have one import surface.
  */
-export type { FileOp, ContractOp, AgentResponse } from './schema'
+import type { AgentAction } from './schema'
+export type { FileOp, ContractOp, AgentResponse, AgentAction } from './schema'
 
 /** The user's generated app, in memory: path -> file contents. */
 export type FileTree = Record<string, string>
@@ -97,6 +98,12 @@ export interface ChatMessage {
     added: number
     removed: number
   }
+  /** For assistant messages: proposed actions for this turn. */
+  actions?: AgentAction[]
+  /** Set true once the user has resolved the proposed actions (hides the cards). */
+  actionsDone?: boolean
+  /** 'system' marks auto-continuation result messages — rendered subtly, not as a normal bubble. */
+  kind?: 'system'
 }
 
 /** Request payload for the chat endpoint. */

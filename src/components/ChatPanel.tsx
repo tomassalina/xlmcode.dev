@@ -8,8 +8,11 @@ import {
   Copy,
   ChevronRight,
   ChevronDown,
+  Coins,
+  Wallet,
+  Loader2,
 } from 'lucide-react'
-import type { ChatMessage } from '../../shared/types'
+import type { AgentAction, ChatMessage } from '../../shared/types'
 import type { Activity } from '../lib/api'
 import { PromptInput } from './PromptInput'
 
@@ -24,6 +27,8 @@ export function ChatPanel({
   streamingMessage,
   filePaths,
   onSend,
+  onRunActions,
+  onSkipActions,
 }: {
   projectName: string
   onRename: (name: string) => void
@@ -34,6 +39,8 @@ export function ChatPanel({
   streamingMessage: string
   filePaths: string[]
   onSend: (text: string) => void
+  onRunActions: (messageIndex: number, actions: AgentAction[]) => Promise<void>
+  onSkipActions: (messageIndex: number) => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
   const [renaming, setRenaming] = useState(false)
@@ -69,7 +76,13 @@ export function ChatPanel({
 
       <div className="flex-1 select-text space-y-4 overflow-y-auto p-4">
         {messages.map((m, i) => (
-          <Message key={i} {...m} />
+          <Message
+            key={i}
+            {...m}
+            messageIndex={i}
+            onRunActions={onRunActions}
+            onSkipActions={onSkipActions}
+          />
         ))}
         {busy && (
           <ThinkingTrace activity={activity} message={streamingMessage} />
@@ -136,10 +149,29 @@ function Message({
   versionName,
   createdAt,
   stats,
-}: ChatMessage) {
+  actions,
+  actionsDone,
+  kind,
+  messageIndex,
+  onRunActions,
+  onSkipActions,
+}: ChatMessage & {
+  messageIndex: number
+  onRunActions: (messageIndex: number, actions: AgentAction[]) => Promise<void>
+  onSkipActions: (messageIndex: number) => void
+}) {
   const isUser = role === 'user'
   const [expanded, setExpanded] = useState(false)
   const long = content.length > 300 || content.split('\n').length > 6
+
+  // System messages render as a subtle centered note, not a bubble.
+  if (kind === 'system') {
+    return (
+      <div className="flex justify-center px-4 py-1">
+        <span className="text-center text-[12px] text-zinc-500">{content}</span>
+      </div>
+    )
+  }
 
   return (
     <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
@@ -173,6 +205,16 @@ function Message({
           )}
         </div>
 
+        {/* Action cards — shown when the assistant proposed actions and they haven't been resolved. */}
+        {actions && actions.length > 0 && !actionsDone && (
+          <ActionCards
+            actions={actions}
+            messageIndex={messageIndex}
+            onRun={onRunActions}
+            onSkip={onSkipActions}
+          />
+        )}
+
         {/* Footer: agent → "Worked for" summary; both → timestamp + copy (bottom-right) */}
         {stats ? (
           <WorkedFor
@@ -188,6 +230,114 @@ function Message({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Renders a card per proposed action with a shared Confirm / Skip footer. */
+function ActionCards({
+  actions,
+  messageIndex,
+  onRun,
+  onSkip,
+}: {
+  actions: AgentAction[]
+  messageIndex: number
+  onRun: (messageIndex: number, actions: AgentAction[]) => Promise<void>
+  onSkip: (messageIndex: number) => void
+}) {
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
+
+  const handleConfirm = async () => {
+    setRunning(true)
+    setRunError(null)
+    try {
+      await onRun(messageIndex, actions)
+    } catch (e) {
+      setRunError(e instanceof Error ? e.message : 'Something went wrong')
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <div className="w-full max-w-[90%] space-y-2">
+      {actions.map((action, i) => (
+        <ActionCard key={i} action={action} />
+      ))}
+      {runError && (
+        <div className="rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-[12px] text-red-300">
+          {runError}
+        </div>
+      )}
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          onClick={() => void handleConfirm()}
+          disabled={running}
+          className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3.5 py-1.5 text-[12.5px] font-medium text-black transition-colors hover:bg-white disabled:opacity-50"
+        >
+          {running ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Running…
+            </>
+          ) : (
+            'Confirm'
+          )}
+        </button>
+        <button
+          onClick={() => onSkip(messageIndex)}
+          disabled={running}
+          className="rounded-lg px-3.5 py-1.5 text-[12.5px] text-zinc-400 transition-colors hover:text-zinc-100 disabled:opacity-50"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ActionCard({ action }: { action: AgentAction }) {
+  if (action.type === 'deploy_contract') {
+    let configEntries: [string, unknown][] = []
+    try {
+      const parsed = JSON.parse(action.configJson) as Record<string, unknown>
+      configEntries = Object.entries(parsed)
+    } catch {
+      // configJson unparseable — show nothing
+    }
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-3 text-[12.5px]">
+        <div className="flex items-center gap-2 text-zinc-200">
+          <Coins className="h-4 w-4 shrink-0 text-zinc-400" />
+          <span className="font-medium">Deploy contract</span>
+          <code className="ml-auto truncate text-[11.5px] text-zinc-400">{action.manifestId}</code>
+        </div>
+        <p className="mt-1.5 text-zinc-400">{action.reason}</p>
+        {configEntries.length > 0 && (
+          <ul className="mt-2 space-y-0.5 border-t border-zinc-800 pt-2">
+            {configEntries.map(([k, v]) => (
+              <li key={k} className="flex items-center gap-1.5 text-[11.5px]">
+                <span className="text-zinc-500">{k}:</span>
+                <span className="text-zinc-300">{String(v)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  // create_wallet
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3.5 py-3 text-[12.5px]">
+      <div className="flex items-center gap-2 text-zinc-200">
+        <Wallet className="h-4 w-4 shrink-0 text-zinc-400" />
+        <span className="font-medium">Create test wallet</span>
+        <code className="ml-auto truncate text-[11.5px] text-zinc-400">{action.label}</code>
+      </div>
+      <p className="mt-1.5 text-zinc-400">{action.reason}</p>
     </div>
   )
 }

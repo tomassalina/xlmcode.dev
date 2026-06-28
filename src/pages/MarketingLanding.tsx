@@ -11,7 +11,7 @@ const NAV_LINKS = ['Templates', 'Showcase', 'Pricing', 'Docs', 'FAQ']
 export function MarketingLanding() {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { createProject, createFromFiles } = useProjects()
+  const { createProject } = useProjects()
 
   const enter = () => {
     login()
@@ -21,11 +21,6 @@ export function MarketingLanding() {
   const startWithPrompt = (text: string) => {
     login()
     navigate(`/projects/${createProject(text)}`)
-  }
-
-  const startWithExample = (label: string, files: Record<string, string>) => {
-    login()
-    navigate(`/projects/${createFromFiles(label, files)}`)
   }
 
   return (
@@ -90,7 +85,7 @@ export function MarketingLanding() {
             {EXAMPLE_APPS.map((ex) => (
               <button
                 key={ex.label}
-                onClick={() => startWithExample(ex.label, ex.files)}
+                onClick={() => startWithPrompt(ex.prompt)}
                 className="rounded-full border border-zinc-800 px-3 py-1.5 text-[12.5px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200"
               >
                 {ex.label}

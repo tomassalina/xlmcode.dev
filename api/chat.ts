@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { streamChat } from './_lib/llm'
 import { getSessionKey } from './_lib/session'
+import { listManifests } from './_lib/contracts'
 import type { ChatRequest } from '../shared/types'
 
 /**
@@ -24,7 +25,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(401).json({ error: 'No API key for this session' })
     }
 
-    const result = streamChat({ apiKey, fileTree, history, userMessage })
+    const catalog = await listManifests()
+    const result = streamChat({ apiKey, fileTree, history, userMessage, catalog })
     res.status(200).setHeader('content-type', 'text/plain; charset=utf-8')
     for await (const chunk of result.textStream) res.write(chunk)
     res.end()

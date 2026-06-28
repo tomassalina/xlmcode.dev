@@ -102,12 +102,16 @@ function devApi(env: Record<string, string>): Plugin {
 
             // Stream the generated JSON to the client as it's produced.
             const { streamChat } = await server.ssrLoadModule('/api/_lib/llm.ts')
+            const { listManifests } = await server.ssrLoadModule(
+              '/api/_lib/contracts.ts',
+            )
             const result = streamChat({
               apiKey,
               model: env.OPENAI_MODEL,
               fileTree: body.fileTree ?? {},
               history: body.history ?? [],
               userMessage: body.userMessage ?? '',
+              catalog: await listManifests(),
             })
             res.statusCode = 200
             res.setHeader('content-type', 'text/plain; charset=utf-8')
