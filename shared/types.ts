@@ -24,6 +24,9 @@ export interface ManifestConfigField {
   key: string
   label: string
   type: 'string' | 'number' | 'address'
+  /** Precise Soroban scval type for the constructor arg. Derived from `type`
+   *  when omitted (string→string, number→i128, address→address). */
+  scType?: 'string' | 'address' | 'i128' | 'u32' | 'u64' | 'bool'
   default?: unknown
 }
 
@@ -58,6 +61,24 @@ export interface DeployResult {
   contractId: string
   txHash: string
   explorerUrl: string
+  /** Ephemeral account that deployed (and, by default, owns) the contract. */
+  deployer?: string
+  wasmHash?: string
+}
+
+/** A contract that has been deployed (or connected) within a project. */
+export interface DeployedContract {
+  manifestId: string
+  name: string
+  category: string
+  contractId: string
+  network: 'testnet'
+  txHash?: string
+  explorerUrl: string
+  deployer?: string
+  /** The config the user/LLM used (echoed back for display). */
+  config: Record<string, unknown>
+  createdAt: number
 }
 
 export interface ChatMessage {

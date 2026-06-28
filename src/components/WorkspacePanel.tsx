@@ -10,6 +10,9 @@ import {
   useErrorMessage,
 } from '@codesandbox/sandpack-react'
 import { FileExplorer } from './FileTree'
+import { ContractsPanel } from './ContractsPanel'
+import { WalletsPanel } from './WalletsPanel'
+import { useWallet } from '../wallet/store'
 import {
   Monitor,
   Smartphone,
@@ -23,7 +26,7 @@ import {
   Wand2,
   AlertTriangle,
 } from 'lucide-react'
-import type { FileTree } from '../../shared/types'
+import type { FileTree, DeployedContract } from '../../shared/types'
 import type { Version } from '../projects/store'
 import { SANDPACK_TEMPLATE, TAILWIND_CDN, sandpackTheme } from '../lib/project'
 import { downloadProjectZip } from '../lib/export'
@@ -44,7 +47,10 @@ function SandpackSync({
 }) {
   const { sandpack } = useSandpack()
   const ftRef = useRef(fileTree)
-  ftRef.current = fileTree
+  // Keep the ref pointing at the latest tree without touching it during render.
+  useEffect(() => {
+    ftRef.current = fileTree
+  }, [fileTree])
 
   // Sandpack normalizes line endings / trailing newline, so compare normalized
   // content — otherwise the round-trip looks "edited" on load and after discard.
@@ -431,6 +437,8 @@ export function WorkspacePanel({
   onCreateFolder,
   onDeleteEntry,
   onFixError,
+  contracts = [],
+  onDeployed,
 }: {
   fileTree: FileTree
   projectName?: string
@@ -446,12 +454,15 @@ export function WorkspacePanel({
   onCreateFolder?: (folderPath: string) => void
   onDeleteEntry?: (path: string) => void
   onFixError?: (text: string) => void
+  contracts?: DeployedContract[]
+  onDeployed?: (c: DeployedContract) => void
 }) {
   const [tab, setTab] = useState<Tab>('preview')
   const [device, setDevice] = useState<Device>('desktop')
   const [downloadOpen, setDownloadOpen] = useState(false)
   const [editable, setEditable] = useState(false)
   const [previewError, setPreviewError] = useState('')
+  const { wallet } = useWallet()
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
@@ -475,10 +486,18 @@ export function WorkspacePanel({
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <button className="rounded-full border border-zinc-800 px-3.5 py-1.5 text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50">
-            Connect wallet
+          <button
+            onClick={() => setTab('wallets')}
+            className="rounded-full border border-zinc-800 px-3.5 py-1.5 text-zinc-300 transition-colors hover:border-zinc-700 hover:text-zinc-50"
+          >
+            {wallet
+              ? `${wallet.publicKey.slice(0, 6)}…${wallet.publicKey.slice(-4)}`
+              : 'Connect wallet'}
           </button>
-          <button className="rounded-full bg-zinc-50 px-3.5 py-1.5 font-medium text-black transition-colors hover:bg-white">
+          <button
+            onClick={() => setTab('contracts')}
+            className="rounded-full bg-zinc-50 px-3.5 py-1.5 font-medium text-black transition-colors hover:bg-white"
+          >
             Deploy
           </button>
         </div>
@@ -555,16 +574,10 @@ export function WorkspacePanel({
         </div>
 
         {tab === 'contracts' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black text-[13px] text-zinc-600">
-            Deployed contracts appear here (Milestone 2).
-          </div>
+          <ContractsPanel contracts={contracts} onDeployed={onDeployed ?? (() => {})} />
         )}
 
-        {tab === 'wallets' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black text-[13px] text-zinc-600">
-            Connected wallets appear here (Milestone 5).
-          </div>
-        )}
+        {tab === 'wallets' && <WalletsPanel slug={projectName} />}
 
         {previewError && (
           <div className="absolute bottom-4 left-1/2 z-30 flex w-[min(92%,560px)] -translate-x-1/2 items-start gap-3 rounded-xl border border-red-900/70 bg-red-950/90 px-3 py-2.5 shadow-2xl">

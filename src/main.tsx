@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/store.tsx'
+import { WalletProvider } from './wallet/store.tsx'
 import { ProjectsProvider } from './projects/store.tsx'
 
 // NOTE: No <StrictMode>. Its dev-only double-mount makes Sandpack's preview
@@ -10,9 +11,11 @@ import { ProjectsProvider } from './projects/store.tsx'
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
     <AuthProvider>
-      <ProjectsProvider>
-        <App />
-      </ProjectsProvider>
+      <WalletProvider>
+        <ProjectsProvider>
+          <App />
+        </ProjectsProvider>
+      </WalletProvider>
     </AuthProvider>
   </BrowserRouter>,
 )

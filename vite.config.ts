@@ -25,6 +25,69 @@ function devApi(env: Record<string, string>): Plugin {
             return send(200, { ok: true, service: 'stellarable-api', dev: true })
           }
 
+          if (req.url.startsWith('/api/contracts')) {
+            const { listManifests } = await server.ssrLoadModule(
+              '/api/_lib/contracts.ts',
+            )
+            return send(200, { contracts: await listManifests() })
+          }
+
+          if (req.url.startsWith('/api/wallet/')) {
+            const wallet = await server.ssrLoadModule('/api/_lib/wallet.ts')
+            if (req.url.includes('/seed')) {
+              if (req.method !== 'POST') return send(405, { error: 'POST only' })
+              return send(200, { mnemonic: wallet.generateMnemonic() })
+            }
+            if (req.url.includes('/account')) {
+              if (req.method !== 'POST') return send(405, { error: 'POST only' })
+              const achunks: Buffer[] = []
+              for await (const c of req) achunks.push(c as Buffer)
+              const { mnemonic, index, fund } = JSON.parse(
+                Buffer.concat(achunks).toString('utf8'),
+              )
+              const acct = wallet.deriveAccount(mnemonic, index)
+              if (fund) await wallet.fundWallet(acct.publicKey)
+              return send(200, { ...acct, balance: await wallet.getBalance(acct.publicKey) })
+            }
+            if (req.url.includes('/fund')) {
+              const wchunks: Buffer[] = []
+              for await (const c of req) wchunks.push(c as Buffer)
+              const { publicKey } = JSON.parse(Buffer.concat(wchunks).toString('utf8'))
+              await wallet.fundWallet(publicKey)
+              return send(200, { publicKey, balance: await wallet.getBalance(publicKey) })
+            }
+            if (req.url.includes('/balance')) {
+              const address = new URL(req.url, 'http://x').searchParams.get('address')
+              if (!address) return send(400, { error: 'address required' })
+              return send(200, { address, balance: await wallet.getBalance(address) })
+            }
+            return send(404, { error: 'Not found' })
+          }
+
+          if (req.url.startsWith('/api/deploy')) {
+            if (req.method !== 'POST') return send(405, { error: 'POST only' })
+            const dchunks: Buffer[] = []
+            for await (const c of req) dchunks.push(c as Buffer)
+            const dbody = dchunks.length
+              ? JSON.parse(Buffer.concat(dchunks).toString('utf8'))
+              : {}
+            const { getManifest } = await server.ssrLoadModule(
+              '/api/_lib/contracts.ts',
+            )
+            const { deployContract } = await server.ssrLoadModule(
+              '/api/_lib/deploy.ts',
+            )
+            const manifest = await getManifest(dbody.manifestId)
+            if (!manifest)
+              return send(404, { error: `Unknown contract: ${dbody.manifestId}` })
+            const result = await deployContract({
+              manifest,
+              config: dbody.config ?? {},
+              deployerSecret: dbody.deployerSecret,
+            })
+            return send(200, result)
+          }
+
           if (req.url.startsWith('/api/chat')) {
             if (req.method !== 'POST') return send(405, { error: 'POST only' })
 

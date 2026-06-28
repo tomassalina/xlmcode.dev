@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components --
+   Context file: the provider and its hook are intentionally co-located. The
+   rule is a dev-only fast-refresh hint and does not affect runtime. */
 import {
   createContext,
   useContext,
@@ -5,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { ChatMessage, FileTree } from '../../shared/types'
+import type { ChatMessage, FileTree, DeployedContract } from '../../shared/types'
 import {
   sendChat,
   parseActivity,
@@ -13,6 +16,7 @@ import {
   type Activity,
 } from '../lib/api'
 import { applyFileOps, initialFileTree } from '../lib/project'
+import { buildContractsFile, CONTRACTS_FILE } from '../lib/contracts'
 
 /**
  * In-memory project store. Lives above the router so project state survives
@@ -54,6 +58,8 @@ export interface ProjectState {
   savedFileTree: FileTree
   /** True when the user has manual, unsaved edits in the editor. */
   dirty: boolean
+  /** Contracts deployed (or connected) for this project. */
+  contracts: DeployedContract[]
 }
 
 interface ProjectsContextValue {
@@ -79,6 +85,8 @@ interface ProjectsContextValue {
   createEntry: (slug: string, path: string, content?: string) => void
   /** Delete a file or a whole folder subtree at an absolute path. */
   deleteEntry: (slug: string, path: string) => void
+  /** Record a deployed/connected contract and inject src/contracts.ts. */
+  addDeployedContract: (slug: string, contract: DeployedContract) => void
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null)
@@ -95,26 +103,33 @@ function deriveName(prompt: string): string {
   return words.length > 48 ? words.slice(0, 48) : words
 }
 
+// Clock/id behind module-scope helpers: keeps render bodies pure (no Date.now /
+// crypto.* during render) and makes time/ids trivially mockable in tests.
+const now = () => Date.now()
+const uid = () => crypto.randomUUID()
+
 const newVersion = (
   label: string,
   summary: string,
   fileTree: FileTree,
 ): Version => ({
-  id: crypto.randomUUID().slice(0, 8),
+  id: uid().slice(0, 8),
   label,
   summary,
   fileTree,
-  createdAt: Date.now(),
+  createdAt: now(),
 })
 
 export function ProjectsProvider({ children }: { children: ReactNode }) {
-  const sessionId = useRef(crypto.randomUUID()).current
-  const [, force] = useState(0)
+  const sessionId = useRef(uid()).current
   const ref = useRef<Record<string, ProjectState>>({})
+  // `ref` holds the latest map for synchronous async reads; `snapshot` mirrors
+  // it for rendering so we never read a ref during render.
+  const [snapshot, setSnapshot] = useState<Record<string, ProjectState>>({})
 
   const commit = (next: Record<string, ProjectState>) => {
     ref.current = next
-    force((n) => n + 1)
+    setSnapshot(next)
   }
 
   const patch = (slug: string, partial: Partial<ProjectState>) => {
@@ -127,7 +142,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     const p = ref.current[slug]
     if (!p || p.busy) return
     const history = p.messages
-    const startedAt = Date.now()
+    const startedAt = now()
     patch(slug, {
       messages: [...history, { role: 'user', content: text, createdAt: startedAt }],
       busy: true,
@@ -169,9 +184,9 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         content: res.message,
         files: ops,
         versionName: changedFiles ? name : undefined,
-        createdAt: Date.now(),
+        createdAt: now(),
         stats: {
-          durationMs: Date.now() - startedAt,
+          durationMs: now() - startedAt,
           filesModified: res.files.length,
           added,
           removed,
@@ -229,19 +244,20 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         generation: 1,
         savedFileTree: fileTree,
         dirty: false,
+        contracts: [],
       },
     })
   }
 
   const createProject = (prompt: string): string => {
-    const slug = `${kebab(deriveName(prompt)) || 'project'}-${crypto.randomUUID().slice(0, 6)}`
+    const slug = `${kebab(deriveName(prompt)) || 'project'}-${uid().slice(0, 6)}`
     make(slug, deriveName(prompt), initialFileTree(), [], [])
     void send(slug, prompt)
     return slug
   }
 
   const createFromFiles = (name: string, files: FileTree): string => {
-    const slug = `${kebab(name) || 'project'}-${crypto.randomUUID().slice(0, 6)}`
+    const slug = `${kebab(name) || 'project'}-${uid().slice(0, 6)}`
     make(
       slug,
       name,
@@ -346,13 +362,31 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  /** Record a deployed contract and (re)generate src/contracts.ts in the app. */
+  const addDeployedContract = (slug: string, contract: DeployedContract) => {
+    const p = ref.current[slug]
+    if (!p) return
+    const contracts = [...p.contracts, contract]
+    const next = {
+      ...p.fileTree,
+      [CONTRACTS_FILE]: buildContractsFile(contracts),
+    }
+    patch(slug, {
+      contracts,
+      fileTree: next,
+      savedFileTree: next,
+      dirty: false,
+      generation: p.generation + 1,
+    })
+  }
+
   const renameProject = (slug: string, name: string) => {
     const trimmed = name.trim()
     if (trimmed) patch(slug, { name: trimmed })
   }
 
   const value: ProjectsContextValue = {
-    projects: Object.values(ref.current).reverse(),
+    projects: Object.values(snapshot).reverse(),
     getProject: (slug) => ref.current[slug],
     createProject,
     createFromFiles,
@@ -365,6 +399,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     markSaved,
     createEntry,
     deleteEntry,
+    addDeployedContract,
   }
 
   return (

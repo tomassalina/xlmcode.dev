@@ -1,22 +1,27 @@
 {
   "id": "oz-fungible-token",
   "name": "Fungible Token",
-  "description": "Configurable standard token (name, symbol, initial supply).",
+  "description": "OpenZeppelin fungible token (SEP-41 compatible) with an owner-gated mint and pause switch. Configure name, symbol and initial supply.",
   "type": "deployable",
   "category": "token",
-  "wasmPath": "contracts/wasm/oz_fungible_token.wasm",
+  "wasmPath": "contracts/wasm/fungible-token.wasm",
   "init": {
     "method": "__constructor",
-    "argsFromConfig": ["owner", "name", "symbol", "initial_supply"]
+    "argsFromConfig": ["name", "symbol", "owner", "initial_supply"]
   },
   "config": [
-    { "key": "name", "label": "Token name", "type": "string", "default": "MyToken" },
+    { "key": "name", "label": "Token name", "type": "string", "default": "My Token" },
     { "key": "symbol", "label": "Symbol", "type": "string", "default": "MTK" },
+    { "key": "owner", "label": "Owner", "type": "address", "default": "{{deployer}}" },
     { "key": "initial_supply", "label": "Initial supply", "type": "number", "default": 1000000 }
   ],
   "methods": [
-    { "name": "balance", "args": ["address"], "returns": "i128", "mutates": false },
+    { "name": "balance", "args": ["account"], "returns": "i128", "mutates": false },
+    { "name": "total_supply", "args": [], "returns": "i128", "mutates": false },
     { "name": "transfer", "args": ["from", "to", "amount"], "returns": "void", "mutates": true },
-    { "name": "total_supply", "args": [], "returns": "i128", "mutates": false }
+    { "name": "approve", "args": ["owner", "spender", "amount", "live_until_ledger"], "returns": "void", "mutates": true },
+    { "name": "mint", "args": ["account", "amount"], "returns": "void", "mutates": true },
+    { "name": "pause", "args": [], "returns": "void", "mutates": true },
+    { "name": "unpause", "args": [], "returns": "void", "mutates": true }
   ]
 }

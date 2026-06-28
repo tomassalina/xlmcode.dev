@@ -81,7 +81,8 @@ export function FileExplorer({
   const toggle = (path: string) =>
     setCollapsed((s) => {
       const next = new Set(s)
-      next.has(path) ? next.delete(path) : next.add(path)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
       return next
     })
 

@@ -1,0 +1,26 @@
+{
+  "id": "oz-nft",
+  "name": "Non-Fungible Token",
+  "description": "OpenZeppelin NFT with sequential minting. Owner mints tokens with auto-incrementing IDs under a shared collection URI.",
+  "type": "deployable",
+  "category": "nft",
+  "wasmPath": "contracts/wasm/nft.wasm",
+  "init": {
+    "method": "__constructor",
+    "argsFromConfig": ["uri", "name", "symbol", "owner"]
+  },
+  "config": [
+    { "key": "uri", "label": "Base URI", "type": "string", "default": "https://example.com/nft" },
+    { "key": "name", "label": "Collection name", "type": "string", "default": "My Collection" },
+    { "key": "symbol", "label": "Symbol", "type": "string", "default": "MYNFT" },
+    { "key": "owner", "label": "Owner", "type": "address", "default": "{{deployer}}" }
+  ],
+  "methods": [
+    { "name": "mint", "args": ["to"], "returns": "u32", "mutates": true },
+    { "name": "owner_of", "args": ["token_id"], "returns": "address", "mutates": false },
+    { "name": "balance", "args": ["owner"], "returns": "u32", "mutates": false },
+    { "name": "transfer", "args": ["from", "to", "token_id"], "returns": "void", "mutates": true },
+    { "name": "name", "args": [], "returns": "string", "mutates": false },
+    { "name": "symbol", "args": [], "returns": "string", "mutates": false }
+  ]
+}

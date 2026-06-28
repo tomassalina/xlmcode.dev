@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components --
+   Context file: the provider and its hook are intentionally co-located. The
+   rule is a dev-only fast-refresh hint and does not affect runtime. */
 import { createContext, useContext, useState, type ReactNode } from 'react'
 
 /**

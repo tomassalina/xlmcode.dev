@@ -19,6 +19,7 @@ export function Editor() {
     markSaved,
     createEntry,
     deleteEntry,
+    addDeployedContract,
   } = useProjects()
   const project = slug ? getProject(slug) : undefined
   // While dragging the divider, kill pointer events on the preview so the
@@ -70,6 +71,8 @@ export function Editor() {
               createEntry(project.slug, `${folder}/.keep`)
             }
             onDeleteEntry={(path) => deleteEntry(project.slug, path)}
+            contracts={project.contracts}
+            onDeployed={(c) => addDeployedContract(project.slug, c)}
             onFixError={(err) =>
               send(
                 project.slug,
