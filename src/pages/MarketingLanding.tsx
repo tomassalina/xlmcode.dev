@@ -1,34 +1,64 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { useAuth } from '../auth/store'
 import { useProjects } from '../projects/store'
 import { PromptInput } from '../components/PromptInput'
 import { EXAMPLE_APPS } from '../lib/project'
+import { LoginModal } from '../auth/LoginModal'
 
 const NAV_LINKS = ['Templates', 'Showcase', 'Pricing', 'Docs', 'FAQ']
 
 /** Public, sellable v0-style marketing landing. Sign in / prompting "logs in". */
 export function MarketingLanding() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { user } = useAuth()
   const { createProject, createFromFiles } = useProjects()
+  const [showLogin, setShowLogin] = useState(false)
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
 
   const enter = () => {
-    login()
-    navigate('/app')
+    if (user) {
+      navigate('/app')
+    } else {
+      setShowLogin(true)
+    }
+  }
+
+  const handleLoginClose = () => {
+    setShowLogin(false)
+    if (pendingPrompt !== null) {
+      const text = pendingPrompt
+      setPendingPrompt(null)
+      navigate(`/projects/${createProject(text)}`)
+    } else {
+      navigate('/app')
+    }
   }
 
   const startWithPrompt = (text: string) => {
-    login()
-    navigate(`/projects/${createProject(text)}`)
+    if (user) {
+      navigate(`/projects/${createProject(text)}`)
+    } else {
+      setPendingPrompt(text)
+      setShowLogin(true)
+    }
   }
+
   const startExample = (ex: (typeof EXAMPLE_APPS)[number]) => {
-    login()
-    navigate(
-      ex.files
-        ? `/projects/${createFromFiles(ex.label, ex.files, ex.contracts)}`
-        : `/projects/${createProject(ex.prompt!)}`,
-    )
+    const doStart = () => {
+      navigate(
+        ex.files
+          ? `/projects/${createFromFiles(ex.label, ex.files, ex.contracts)}`
+          : `/projects/${createProject(ex.prompt!)}`,
+      )
+    }
+    if (user) {
+      doStart()
+    } else {
+      setPendingPrompt(ex.prompt ?? null)
+      setShowLogin(true)
+    }
   }
 
   return (
@@ -108,6 +138,8 @@ export function MarketingLanding() {
           </div>
         </div>
       </main>
+
+      {showLogin && <LoginModal onClose={handleLoginClose} />}
     </div>
   )
 }
