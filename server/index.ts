@@ -1,5 +1,4 @@
-import { config } from 'dotenv'
-config({ path: '.env.local' })
+import './env.js' // MUST be first — loads .env.local before any other module
 
 import express from 'express'
 import cors from 'cors'
