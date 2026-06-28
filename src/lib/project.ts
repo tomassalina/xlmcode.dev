@@ -514,7 +514,16 @@ export default function App() {
   }, [])
 
   const loadActivity = useCallback(async (a: string) => {
-    try { setActivity(await getTokenActivity(TOKEN_ID, a, decimals)) } catch {}
+    try {
+      const fetched = await getTokenActivity(TOKEN_ID, a, decimals)
+      // Merge: keep just-submitted (optimistic) entries whose event hasn't been
+      // indexed by the RPC yet, deduped by txHash, on top.
+      setActivity((prev) => {
+        const seen = new Set(fetched.map((m) => m.txHash).filter(Boolean))
+        const pending = prev.filter((m) => m.txHash && !seen.has(m.txHash))
+        return [...pending, ...fetched]
+      })
+    } catch {}
   }, [decimals])
 
   const refresh = useCallback(async (a: string) => {
@@ -537,25 +546,30 @@ export default function App() {
     setAddress(null); setBalance(null); setActivity([])
   }
 
+  const prepend = (m: any) => setActivity((prev) => [m, ...prev])
+
   const claim = async () => {
     if (!address) return
     setBusy('claim')
     try {
-      await claimTokens(address)
-      await refresh(address)
+      const hash = await claimTokens(address)
+      prepend({ kind: 'mint', counterparty: '', amount: '1000', time: new Date().toISOString(), txHash: hash })
       flash({ kind: 'ok', text: 'Claimed 1,000 ' + sym + ' 🎉' })
+      refresh(address)
     } catch (e: any) { flash({ kind: 'err', text: e.message }) }
     finally { setBusy('') }
   }
 
   const send = async () => {
     if (!address || !to) return
+    const recipient = to
     setBusy('send')
     try {
-      const hash = await invokeContract(TOKEN_ID, 'transfer', address, [addr(address), addr(to), i128(toUnits(amount, decimals))])
-      await refresh(address)
+      const hash = await invokeContract(TOKEN_ID, 'transfer', address, [addr(address), addr(recipient), i128(toUnits(amount, decimals))])
+      prepend({ kind: 'out', counterparty: recipient, amount, time: new Date().toISOString(), txHash: hash })
       setTo('')
       flash({ kind: 'ok', text: 'Sent ' + fmt(amount) + ' ' + sym + ' · ' + short(hash) })
+      refresh(address)
     } catch (e: any) { flash({ kind: 'err', text: e.message }) }
     finally { setBusy('') }
   }
