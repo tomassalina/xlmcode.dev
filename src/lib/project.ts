@@ -138,21 +138,274 @@ export function applyFileOps(tree: FileTree, ops: FileOp[]): FileTree {
   return next
 }
 
-// --- Example starters: prompts that drive the LLM to build (and deploy) a real
-// Stellar dApp from the blank template. Clicking one starts a new project. ---
+// --- Example starters. A `files` example is a pre-built, working dApp (no LLM)
+// wired to a SHARED pre-deployed testnet contract: it reads live on-chain state
+// and connects Freighter. A `prompt` example drives the LLM from the blank
+// template. ---
+
+/** Browser polyfills so @stellar/stellar-sdk runs in the sandbox. Imported
+ *  FIRST (before the SDK) so Buffer exists when the SDK module evaluates. */
+const POLYFILLS = `import { Buffer } from 'buffer'
+const g = globalThis as unknown as { Buffer?: unknown }
+if (!g.Buffer) g.Buffer = Buffer
+`
+
+/** Shared, pre-deployed Demo fungible token on testnet (1,000,000 supply). */
+const DEMO_TOKEN_ID = 'CCIIOMBLKX43M3D7NSSVZLJHOWXDA2F5WGVK6PDFB6V6BMOIN2NY6JWU'
+const DEMO_TOKEN_VIEW_SOURCE =
+  'GBPEKQEYLWDZFY5KVIPZUPXRJPXLMX6CYSPRI6Z4WCDTOQQNELXZC7RO'
+
+const STELLAR_PACKAGE_JSON = `{
+  "name": "stellar-dapp",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "buffer": "^6.0.3",
+    "@stellar/stellar-sdk": "^13.1.0",
+    "@stellar/freighter-api": "^4.1.0"
+  }
+}
+`
+
+/** A tiny reusable Soroban client: read-only view calls + Freighter writes. */
+const STELLAR_LIB = `import {
+  rpc,
+  Contract,
+  TransactionBuilder,
+  Networks,
+  BASE_FEE,
+  Address,
+  nativeToScVal,
+  scValToNative,
+} from '@stellar/stellar-sdk'
+import {
+  isConnected,
+  requestAccess,
+  getAddress,
+  signTransaction,
+} from '@stellar/freighter-api'
+
+export const RPC_URL = 'https://soroban-testnet.stellar.org'
+export const NETWORK_PASSPHRASE = Networks.TESTNET
+const server = new rpc.Server(RPC_URL)
+
+/** Read a view method (no wallet). Uses a funded account just as a sim source. */
+export async function readContract(
+  contractId: string,
+  method: string,
+  viewSource: string,
+  args: any[] = [],
+) {
+  const c = new Contract(contractId)
+  const source = await server.getAccount(viewSource)
+  const tx = new TransactionBuilder(source, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(c.call(method, ...args))
+    .setTimeout(30)
+    .build()
+  const sim = await server.simulateTransaction(tx)
+  if (rpc.Api.isSimulationError(sim)) throw new Error(sim.error)
+  return scValToNative(sim.result!.retval)
+}
+
+export const addr = (a: string) => new Address(a).toScVal()
+export const i128 = (n: bigint | number) => nativeToScVal(BigInt(n), { type: 'i128' })
+
+/** Connect Freighter and return the user's address. */
+export async function connectWallet(): Promise<string> {
+  const c = await isConnected()
+  if (!c.isConnected) throw new Error('Freighter is not installed. Get it at freighter.app')
+  const access = await requestAccess()
+  if (access.error) throw new Error(access.error)
+  return access.address
+}
+
+export async function getConnectedAddress(): Promise<string | null> {
+  const c = await isConnected()
+  if (!c.isConnected) return null
+  const a = await getAddress()
+  return a.address || null
+}
+
+/** Build, Freighter-sign and submit a contract write. Returns the tx hash. */
+export async function invokeContract(
+  contractId: string,
+  method: string,
+  caller: string,
+  args: any[] = [],
+): Promise<string> {
+  const c = new Contract(contractId)
+  const source = await server.getAccount(caller)
+  const tx = new TransactionBuilder(source, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(c.call(method, ...args))
+    .setTimeout(60)
+    .build()
+  const prepared = await server.prepareTransaction(tx)
+  const signed = await signTransaction(prepared.toXDR(), {
+    networkPassphrase: NETWORK_PASSPHRASE,
+    address: caller,
+  })
+  if (signed.error) throw new Error(String(signed.error))
+  const txObj = TransactionBuilder.fromXDR(signed.signedTxXdr, NETWORK_PASSPHRASE)
+  const sent = await server.sendTransaction(txObj as any)
+  if (sent.status === 'ERROR') throw new Error(JSON.stringify(sent.errorResult))
+  let got = await server.getTransaction(sent.hash)
+  for (let i = 0; got.status === 'NOT_FOUND' && i < 20; i++) {
+    await new Promise((r) => setTimeout(r, 1000))
+    got = await server.getTransaction(sent.hash)
+  }
+  if (got.status !== 'SUCCESS') throw new Error('Transaction ' + got.status)
+  return sent.hash
+}
+`
+
+const DEMO_TOKEN_APP = `import './polyfills'
+import { useEffect, useState } from 'react'
+import {
+  readContract,
+  connectWallet,
+  getConnectedAddress,
+  invokeContract,
+  addr,
+  i128,
+} from './stellar'
+
+const TOKEN_ID = '${DEMO_TOKEN_ID}'
+const VIEW_SOURCE = '${DEMO_TOKEN_VIEW_SOURCE}'
+const short = (a: string) => a.slice(0, 6) + '…' + a.slice(-4)
+
+export default function App() {
+  const [meta, setMeta] = useState<{ name: string; symbol: string; supply: string } | null>(null)
+  const [address, setAddress] = useState<string | null>(null)
+  const [balance, setBalance] = useState<string | null>(null)
+  const [to, setTo] = useState('')
+  const [amount, setAmount] = useState('100')
+  const [status, setStatus] = useState('')
+  const [err, setErr] = useState('')
+
+  const loadMeta = async () => {
+    try {
+      const [name, symbol, supply] = await Promise.all([
+        readContract(TOKEN_ID, 'name', VIEW_SOURCE),
+        readContract(TOKEN_ID, 'symbol', VIEW_SOURCE),
+        readContract(TOKEN_ID, 'total_supply', VIEW_SOURCE),
+      ])
+      setMeta({ name, symbol, supply: String(supply) })
+    } catch (e: any) { setErr(e.message) }
+  }
+
+  const loadBalance = async (a: string) => {
+    try {
+      const b = await readContract(TOKEN_ID, 'balance', VIEW_SOURCE, [addr(a)])
+      setBalance(String(b))
+    } catch (e: any) { setErr(e.message) }
+  }
+
+  useEffect(() => {
+    loadMeta()
+    getConnectedAddress().then((a) => { if (a) { setAddress(a); loadBalance(a) } })
+  }, [])
+
+  const connect = async () => {
+    setErr('')
+    try {
+      const a = await connectWallet()
+      setAddress(a)
+      loadBalance(a)
+    } catch (e: any) { setErr(e.message) }
+  }
+
+  const transfer = async () => {
+    if (!address) return
+    setStatus('Signing…'); setErr('')
+    try {
+      const hash = await invokeContract(TOKEN_ID, 'transfer', address, [
+        addr(address), addr(to), i128(amount),
+      ])
+      setStatus('Sent: ' + hash.slice(0, 8) + '…')
+      loadBalance(address)
+    } catch (e: any) { setStatus(''); setErr(e.message) }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
+      <div className="mx-auto max-w-md space-y-5">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Token Dashboard</h1>
+          {address ? (
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
+              {short(address)}
+            </span>
+          ) : (
+            <button onClick={connect} className="rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-black hover:bg-slate-200">
+              Connect Freighter
+            </button>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          {meta ? (
+            <>
+              <p className="text-2xl font-bold">{meta.name} <span className="text-slate-500">{meta.symbol}</span></p>
+              <p className="mt-1 text-sm text-slate-400">Total supply</p>
+              <p className="text-lg font-semibold">{Number(meta.supply).toLocaleString()}</p>
+            </>
+          ) : <p className="text-sm text-slate-400">Reading contract…</p>}
+          {address && (
+            <div className="mt-4 border-t border-slate-800 pt-4">
+              <p className="text-sm text-slate-400">Your balance</p>
+              <p className="text-lg font-semibold">{balance === null ? '…' : Number(balance).toLocaleString()} {meta?.symbol}</p>
+            </div>
+          )}
+        </div>
+
+        {address && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <p className="mb-3 text-sm font-medium">Transfer tokens</p>
+            <input value={to} onChange={(e) => setTo(e.target.value)} placeholder="Recipient G…"
+              className="mb-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+            <input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount" inputMode="numeric"
+              className="mb-3 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm outline-none focus:border-slate-500" />
+            <button onClick={transfer} disabled={!to}
+              className="w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-black hover:bg-emerald-400 disabled:opacity-50">
+              Sign & transfer
+            </button>
+            {status && <p className="mt-2 text-xs text-emerald-400">{status}</p>}
+          </div>
+        )}
+
+        {err && <p className="rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-xs text-red-300">{err}</p>}
+        <p className="text-center text-xs text-slate-600">Live on Stellar testnet · contract {short(TOKEN_ID)}</p>
+      </div>
+    </div>
+  )
+}
+`
 
 export interface ExampleApp {
   label: string
-  /** Starter prompt — the LLM builds the dApp from the blank template and
-   *  proposes the contract deploys it needs. */
-  prompt: string
+  /** Pre-built dApp files (no LLM) — a working demo on a shared contract. */
+  files?: FileTree
+  /** Or a starter prompt the LLM builds from the blank template. */
+  prompt?: string
 }
 
 export const EXAMPLE_APPS: ExampleApp[] = [
   {
     label: 'Fungible token dashboard',
-    prompt:
-      'Build a token dashboard. Deploy a fungible token named "Demo" with symbol DEMO and an initial supply of 1,000,000, then show its name, symbol and total supply, plus a form to transfer tokens to an address.',
+    files: withBaseFiles({
+      '/package.json': STELLAR_PACKAGE_JSON,
+      '/polyfills.ts': POLYFILLS,
+      '/stellar.ts': STELLAR_LIB,
+      '/App.tsx': DEMO_TOKEN_APP,
+    }),
   },
   {
     label: 'NFT minting app',
