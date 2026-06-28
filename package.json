@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc -b && tsc -p api/tsconfig.json",
+    "typecheck": "tsc -b && tsc -p api/tsconfig.json && tsc -p server/tsconfig.json --noEmit",
     "lint": "eslint .",
     "preview": "vite preview"
   },
