@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!gate.allowed) {
       res.write(
         JSON.stringify({
-          message: refusalMessage(gate.category),
+          message: gate.refusal || refusalMessage(gate.category),
           versionName: 'Blocked',
           files: [],
           actions: [],

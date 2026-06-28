@@ -50,8 +50,62 @@ export const sandpackTheme: SandpackTheme = {
 
 const STARTER_APP = `export default function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white text-slate-400">
-      <p className="text-sm">Your app will appear here. Describe it in the chat.</p>
+    <div className="relative min-h-screen overflow-hidden bg-black font-sans text-white">
+      <style>{\`
+        @keyframes sb-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        @keyframes sb-glow { 0%,100%{opacity:.45} 50%{opacity:1} }
+        @keyframes sb-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes sb-spin { to{transform:rotate(360deg)} }
+      \`}</style>
+
+      {/* ambient gradient glow */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-tr from-violet-600/30 via-fuchsia-500/20 to-cyan-400/30 blur-3xl"
+        style={{ animation: 'sb-glow 6s ease-in-out infinite' }}
+      />
+      {/* faint grid */}
+      <div
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
+        }}
+      />
+
+      <div className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        <div className="relative" style={{ animation: 'sb-float 5s ease-in-out infinite' }}>
+          <div
+            className="absolute -inset-6 rounded-full bg-violet-500/20 blur-2xl"
+            style={{ animation: 'sb-glow 4s ease-in-out infinite' }}
+          />
+          <svg width="86" height="76" viewBox="0 0 86 76" fill="none" className="relative">
+            <defs>
+              <linearGradient id="sbT" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#a78bfa" />
+                <stop offset="1" stopColor="#22d3ee" />
+              </linearGradient>
+            </defs>
+            <path d="M43 5 L81 71 H5 Z" stroke="url(#sbT)" strokeWidth="3" strokeLinejoin="round" fill="url(#sbT)" fillOpacity="0.12" />
+          </svg>
+        </div>
+
+        <h1 className="mt-9 text-3xl font-semibold tracking-tight sm:text-4xl" style={{ animation: 'sb-up .7s ease both' }}>
+          Your app will appear here
+        </h1>
+        <p className="mt-3 max-w-md text-[15px] leading-relaxed text-white/50" style={{ animation: 'sb-up .9s ease both' }}>
+          Describe it in the chat and watch it come to life — on Stellar, in seconds.
+        </p>
+
+        <div className="mt-9 flex items-center gap-2.5 text-[12px] text-white/40" style={{ animation: 'sb-up 1.1s ease both' }}>
+          <span className="flex gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-white/70" style={{ animation: 'sb-glow 1.4s ease-in-out infinite' }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-white/70" style={{ animation: 'sb-glow 1.4s ease-in-out .2s infinite' }} />
+            <span className="h-1.5 w-1.5 rounded-full bg-white/70" style={{ animation: 'sb-glow 1.4s ease-in-out .4s infinite' }} />
+          </span>
+          Waiting for your idea
+        </div>
+      </div>
     </div>
   )
 }

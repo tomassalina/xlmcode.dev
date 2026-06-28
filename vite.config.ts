@@ -142,7 +142,7 @@ function devApi(env: Record<string, string>): Plugin {
             if (!gate.allowed) {
               res.write(
                 JSON.stringify({
-                  message: refusalMessage(gate.category),
+                  message: gate.refusal || refusalMessage(gate.category),
                   versionName: 'Blocked',
                   files: [],
                   actions: [],
