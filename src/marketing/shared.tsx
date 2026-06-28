@@ -22,12 +22,13 @@ export function Wordmark({ size = 19 }: { size?: number }) {
   )
 }
 
-type NavKey = 'home' | 'contracts' | 'pricing' | 'faq'
+type NavKey = 'home' | 'templates' | 'contracts' | 'pricing' | 'faq'
 
 const NAV_LINKS: { key: NavKey; label: string; to: string }[] = [
+  { key: 'templates', label: 'Templates', to: '/templates' },
   { key: 'contracts', label: 'Contracts', to: '/contracts' },
   { key: 'pricing', label: 'Pricing', to: '/pricing' },
-  { key: 'faq', label: 'FAQ', to: '/#faq' },
+  { key: 'faq', label: 'FAQ', to: '/faq' },
 ]
 
 /** Sticky top nav, shared across the marketing pages. */

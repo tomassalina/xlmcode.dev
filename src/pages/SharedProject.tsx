@@ -5,11 +5,12 @@ import { useAuth } from '../auth/store'
 import { useProjects } from '../projects/store'
 import { LoginModal } from '../auth/LoginModal'
 import { WorkspacePanel } from '../components/WorkspacePanel'
+import type { Version } from '../projects/store'
 import { fetchShared } from '../lib/backend'
 import { Logo, Wordmark } from '../marketing/shared'
 import type { DeployedContract, FileTree } from '../../shared/types'
 
-type Loaded = { name: string; files: FileTree; contracts: DeployedContract[] }
+type Loaded = { name: string; files: FileTree; contracts: DeployedContract[]; versions: Version[] }
 
 /** Public read-only view of a shared project at /p/:token. View code, contracts
  *  and preview; clone (login required) to get an editable copy. */
@@ -22,16 +23,34 @@ export function SharedProject() {
   const [error, setError] = useState('')
   const [cloning, setCloning] = useState(false)
   const [showLogin, setShowLogin] = useState(false)
+  // Which tree is shown + a remount key, so viewing a version works read-only.
+  const [view, setView] = useState<FileTree | null>(null)
+  const [gen, setGen] = useState(1)
 
   useEffect(() => {
     if (!token) return
     fetchShared(token)
       .then((d) => {
         const files = (d.project.current_files ?? d.versions.at(-1)?.files ?? {}) as FileTree
-        setData({ name: d.project.name, files, contracts: (d.contracts ?? []) as DeployedContract[] })
+        const versions: Version[] = (d.versions ?? []).map((v) => ({
+          id: v.id,
+          label: v.label ?? 'Version',
+          summary: v.summary ?? '',
+          fileTree: v.files ?? {},
+          createdAt: new Date(v.created_at).getTime(),
+        }))
+        setData({ name: d.project.name, files, contracts: (d.contracts ?? []) as DeployedContract[], versions })
+        setView(files)
       })
       .catch(() => setError('This shared project could not be found.'))
   }, [token])
+
+  const openVersion = (id: string) => {
+    const v = data?.versions.find((x) => x.id === id)
+    if (!v) return
+    setView(v.fileTree)
+    setGen((g) => g + 1)
+  }
 
   const doClone = async () => {
     if (!token) return
@@ -85,17 +104,19 @@ export function SharedProject() {
             className="flex items-center gap-2 rounded-full bg-[#FDDA24] px-4 py-2 text-[13px] font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {cloning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-            {cloning ? 'Cloning…' : 'Clone to build'}
+            {cloning ? 'Cloning…' : user ? 'Clone to build' : 'Sign in to clone'}
           </button>
         </div>
       </header>
       <div className="min-h-0 flex-1">
         <WorkspacePanel
-          fileTree={data.files}
+          fileTree={view ?? data.files}
           projectName={data.name}
           contracts={data.contracts}
+          versions={data.versions}
+          onOpenVersion={openVersion}
           readOnly
-          generation={1}
+          generation={gen}
         />
       </div>
       {showLogin && (

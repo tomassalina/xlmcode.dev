@@ -219,7 +219,9 @@ function VersionMenu({
 }: {
   versions: Version[]
   onOpen: (id: string) => void
-  onRestore: (id: string) => void
+  /** Optional — omitted in read-only (shared) views, where you can view a
+   *  version but not destructively restore. */
+  onRestore?: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const [confirm, setConfirm] = useState<{ id: string; n: number } | null>(null)
@@ -270,8 +272,9 @@ function VersionMenu({
                       </p>
                     )}
                   </button>
-                  {/* Destructive restore: only for older versions, never at v1 */}
-                  {!latest && versions.length > 1 && (
+                  {/* Destructive restore: only for older versions, never at v1.
+                      Hidden in read-only (shared) views (no onRestore). */}
+                  {onRestore && !latest && versions.length > 1 && (
                     <button
                       onClick={() => setConfirm({ id: v.id, n })}
                       className="mt-1.5 rounded border border-zinc-800 px-2 py-0.5 text-[11px] text-zinc-500 hover:border-red-900 hover:text-red-400"
@@ -289,7 +292,7 @@ function VersionMenu({
           n={confirm.n}
           onClose={() => setConfirm(null)}
           onConfirm={() => {
-            onRestore(confirm.id)
+            onRestore?.(confirm.id)
             setConfirm(null)
             setOpen(false)
           }}
@@ -406,7 +409,7 @@ function PreviewBar({
           <Smartphone className="h-3.5 w-3.5" />
         </button>
       </div>
-      {onRestore && onOpenVersion && (
+      {onOpenVersion && versions.length > 0 && (
         <VersionMenu
           versions={versions}
           onOpen={onOpenVersion}

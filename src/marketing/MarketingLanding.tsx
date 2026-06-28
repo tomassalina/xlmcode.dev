@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/store'
 import { useProjects } from '../projects/store'
@@ -20,25 +20,15 @@ export function MarketingLanding() {
   })
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { createProject, openTemplate } = useProjects()
+  const { createProject } = useProjects()
   const [showLogin, setShowLogin] = useState(false)
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
-  const [pendingTemplate, setPendingTemplate] = useState<string | null>(null)
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
   const [prompt, setPrompt] = useState('')
-  const faqRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchTemplates().then(setTemplates).catch(() => {})
   }, [])
-
-  const openTpl = async (id: string) => {
-    try {
-      navigate(`/projects/${await openTemplate(id)}`)
-    } catch {
-      navigate('/app')
-    }
-  }
 
   const enter = () => (user ? navigate('/app') : setShowLogin(true))
 
@@ -52,12 +42,10 @@ export function MarketingLanding() {
     }
   }
 
-  const startTemplate = (t: TemplateSummary) => {
-    if (user) void openTpl(t.id)
-    else {
-      setPendingTemplate(t.id)
-      setShowLogin(true)
-    }
+  // Clicking a template opens its shared read-only preview (/p/:token), where
+  // "Sign in" → "Clone" lives — same flow as a shared project.
+  const openTemplate = (t: TemplateSummary) => {
+    if (t.token) navigate(`/p/${t.token}`)
   }
 
   const handleLoginClose = () => {
@@ -66,10 +54,6 @@ export function MarketingLanding() {
       const text = pendingPrompt
       setPendingPrompt(null)
       navigate(`/projects/${createProject(text)}`)
-    } else if (pendingTemplate !== null) {
-      const id = pendingTemplate
-      setPendingTemplate(null)
-      void openTpl(id)
     } else {
       navigate('/app')
     }
@@ -125,7 +109,7 @@ export function MarketingLanding() {
           {/* quick chips → real templates */}
           <div className="xlm-fadeup" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 26 }}>
             {templates.map((t, i) => (
-              <div key={t.id} onClick={() => startTemplate(t)} className="xlm-chip" style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #242424', background: '#0a0a0a', borderRadius: 999, padding: '10px 18px', fontSize: 14, color: '#d4d4d4', cursor: 'pointer' }}>
+              <div key={t.id} onClick={() => openTemplate(t)} className="xlm-chip" style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #242424', background: '#0a0a0a', borderRadius: 999, padding: '10px 18px', fontSize: 14, color: '#d4d4d4', cursor: 'pointer' }}>
                 <ChipIcon kind={t.kind} highlight={i === 0} />
                 {t.name}
               </div>
@@ -186,9 +170,6 @@ export function MarketingLanding() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <Faq faqRef={faqRef} />
-
       {/* CTA */}
       <section style={{ padding: '130px 32px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <Glow style={{ bottom: -160, left: '50%', transform: 'translateX(-50%)', width: 820, height: 420 }} />
@@ -197,7 +178,7 @@ export function MarketingLanding() {
           <p style={{ fontSize: 20, color: '#9a9a9a', lineHeight: 1.55, margin: '0 0 40px' }}>Experiment freely. Everything runs on testnet — deploy fearlessly, break nothing.</p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             <div onClick={enter} className="xlm-pill" style={{ background: YELLOW, color: '#0a0a0a', fontWeight: 600, fontSize: 17, padding: '16px 36px', borderRadius: 999, cursor: 'pointer' }}>Get Started</div>
-            <div onClick={() => faqRef.current?.scrollIntoView({ behavior: 'smooth' })} className="xlm-soft" style={{ border: '1px solid #2a2a2a', color: '#fafafa', fontWeight: 500, fontSize: 17, padding: '16px 36px', borderRadius: 999, cursor: 'pointer' }}>Read the FAQ</div>
+            <div onClick={() => navigate('/faq')} className="xlm-soft" style={{ border: '1px solid #2a2a2a', color: '#fafafa', fontWeight: 500, fontSize: 17, padding: '16px 36px', borderRadius: 999, cursor: 'pointer' }}>Read the FAQ</div>
           </div>
         </div>
       </section>
@@ -236,6 +217,9 @@ function ModelSelector() {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9" /></svg>
       </div>
       {open && (
+        <>
+        {/* click-anywhere-to-close backdrop */}
+        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 15 }} />
         <div style={{ position: 'absolute', bottom: 'calc(100% + 10px)', left: 0, width: 248, background: '#101010', border: '1px solid #262626', borderRadius: 14, padding: 7, boxShadow: '0 16px 50px rgba(0,0,0,0.6)', zIndex: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', borderRadius: 9, background: '#1a1a1a' }}>
             <div><div style={{ fontSize: 14.5, fontWeight: 600, color: '#fafafa' }}>XLM Mini</div><div style={{ fontSize: 12, color: '#8a8a8a' }}>Fast &amp; free on testnet</div></div>
@@ -248,38 +232,9 @@ function ModelSelector() {
             </div>
           ))}
         </div>
+        </>
       )}
     </div>
   )
 }
 
-const FAQS: { q: string; a: string }[] = [
-  { q: 'Do I need to know Rust or Soroban?', a: 'No. You describe what you want in plain language and XLM Code generates, compiles and deploys the Soroban contract for you. The base contracts are audited OpenZeppelin implementations.' },
-  { q: 'Where do my contracts deploy?', a: 'Everything runs on the Stellar testnet. Keys and faucet funding are handled for you, so you can deploy and experiment without spending real assets.' },
-  { q: 'Can I connect to existing protocols?', a: 'Yes — you can compose with live protocols like Soroswap by contract ID, and the generated frontend wires up the calls for you.' },
-  { q: 'Can I edit and export the generated app?', a: 'Every project is a real Vite + React + TypeScript app. You can edit it live, restore previous versions, and download the full project as a zip.' },
-  { q: 'What does it cost?', a: 'You can start free on testnet. Paid plans add monthly credits for heavier generation and deploy usage — see the Pricing page.' },
-]
-
-function Faq({ faqRef }: { faqRef: React.RefObject<HTMLDivElement | null> }) {
-  const [open, setOpen] = useState<number | null>(0)
-  return (
-    <section ref={faqRef} id="faq" style={{ maxWidth: 820, margin: '0 auto', padding: '70px 32px 20px' }}>
-      <Eyebrow>FAQ</Eyebrow>
-      <h2 className="xlm-h2" style={{ fontSize: 46, fontWeight: 700, letterSpacing: '-0.03em', margin: '0 0 32px', lineHeight: 1.05 }}>Questions, answered</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {FAQS.map((f, i) => (
-          <div key={i} style={{ border: '1px solid #1f1f1f', borderRadius: 16, background: '#070707', overflow: 'hidden' }}>
-            <div onClick={() => setOpen(open === i ? null : i)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', cursor: 'pointer', fontSize: 17, fontWeight: 600 }}>
-              {f.q}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={open === i ? YELLOW : '#8a8a8a'} strokeWidth="2" style={{ transform: open === i ? 'rotate(45deg)' : 'none', transition: 'transform .2s ease' }}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            </div>
-            {open === i && (
-              <div style={{ padding: '0 24px 22px', fontSize: 15.5, color: '#9a9a9a', lineHeight: 1.6 }}>{f.a}</div>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}

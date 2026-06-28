@@ -43,18 +43,28 @@ router.get('/projects', requireUser, async (req, res) => {
   res.json(data)
 })
 
-/** GET /api/templates — public, system-owned starter templates (for the badges).
+/** GET /api/templates — PUBLIC (no auth): system-owned starter templates for the
+ *  landing badges + /templates page. Uses the admin client so logged-out visitors
+ *  get them (the RLS template policy only covers the `authenticated` role).
  *  Order is data-driven via projects.sort_order. */
-router.get('/templates', requireUser, async (req, res) => {
-  const { data, error } = await req.supabase
+router.get('/templates', async (_req, res) => {
+  const { data, error } = await adminClient()
     .from('projects')
-    .select('id,slug,name,kind,sort_order')
+    .select('id,slug,name,kind,sort_order,project_shares(token)')
     .eq('is_template', true)
     .eq('published', true)
     .order('sort_order', { ascending: true })
 
   if (error) { res.status(500).json({ error: error.message }); return }
-  res.json(data)
+  // Flatten the share token so badges can link straight to /p/:token.
+  const out = (data ?? []).map((p: Record<string, unknown>) => ({
+    id: p['id'],
+    slug: p['slug'],
+    name: p['name'],
+    kind: p['kind'],
+    token: (p['project_shares'] as { token: string }[] | null)?.[0]?.token ?? null,
+  }))
+  res.json(out)
 })
 
 /** Resolve a project name unique within the owner's projects: "X", "X 2", "X 3"… */

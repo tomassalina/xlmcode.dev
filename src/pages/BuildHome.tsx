@@ -7,7 +7,7 @@ import { fetchTemplates, type TemplateSummary } from '../lib/backend'
 /** Route "/app" — the build home inside the authed shell. */
 export function BuildHome() {
   const navigate = useNavigate()
-  const { createProject, openTemplate } = useProjects()
+  const { createProject } = useProjects()
   const [templates, setTemplates] = useState<TemplateSummary[]>([])
 
   useEffect(() => {
@@ -20,13 +20,9 @@ export function BuildHome() {
     navigate(`/projects/${createProject(text)}`)
   }
 
-  const openTpl = async (t: TemplateSummary) => {
-    try {
-      const slug = await openTemplate(t.id)
-      navigate(`/projects/${slug}`)
-    } catch (err) {
-      console.warn('[templates] failed to open:', err)
-    }
+  // Open the template's shared read-only preview (/p/:token) → Clone from there.
+  const openTpl = (t: TemplateSummary) => {
+    if (t.token) navigate(`/p/${t.token}`)
   }
 
   return (
@@ -45,7 +41,7 @@ export function BuildHome() {
           {templates.map((t) => (
             <button
               key={t.id}
-              onClick={() => void openTpl(t)}
+              onClick={() => openTpl(t)}
               className="rounded-full border border-zinc-800 px-3 py-1.5 text-[12.5px] text-zinc-400 transition-colors hover:border-zinc-700 hover:text-zinc-200"
             >
               {t.name}

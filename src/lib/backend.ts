@@ -49,6 +49,8 @@ export interface TemplateSummary {
   slug: string
   name: string
   kind: string | null
+  /** Public share token → open the read-only preview at /p/:token. */
+  token: string | null
 }
 
 /** System-owned starter templates shown as badges. */

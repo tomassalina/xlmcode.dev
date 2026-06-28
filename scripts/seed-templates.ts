@@ -101,6 +101,9 @@ async function main() {
       kind: 'system',
     })
 
+    // Public share token → badges/templates link to /p/:token (read-only preview).
+    await admin.from('project_shares').insert({ project_id: projectId, created_by: systemId })
+
     if (ex.contracts?.length) {
       await admin.from('deployed_contracts').insert(
         ex.contracts.map((c) => ({
