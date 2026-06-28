@@ -18,8 +18,8 @@ interface AuthValue {
   logout: () => void
 }
 
-const STORAGE_KEY = 'stellarable-user'
-const DEMO_USER: User = { name: 'Tomás Salina', email: 'tomas@stellarable.dev' }
+const STORAGE_KEY = 'xlmcode-user'
+const DEMO_USER: User = { name: 'Tomás Salina', email: 'tomas@xlmcode.dev' }
 
 const AuthContext = createContext<AuthValue | null>(null)
 

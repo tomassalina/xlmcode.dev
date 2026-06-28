@@ -95,7 +95,7 @@ dist
 `,
   '/README.md': `# Stellar App
 
-Generated with Stellarable. A real Vite + React + TypeScript + TailwindCSS project.
+Generated with xlmcode. A real Vite + React + TypeScript + TailwindCSS project.
 
 ## Run locally
 

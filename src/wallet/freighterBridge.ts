@@ -32,10 +32,10 @@ export function useFreighterBridge() {
   useEffect(() => {
     const onMessage = async (e: MessageEvent) => {
       const msg = e.data
-      if (!msg || msg.source !== 'stellarable-dapp' || !msg.id) return
+      if (!msg || msg.source !== 'xlmcode-dapp' || !msg.id) return
       const reply = (data: Record<string, unknown>) =>
         (e.source as Window | null)?.postMessage(
-          { source: 'stellarable-host', id: msg.id, ...data },
+          { source: 'xlmcode-host', id: msg.id, ...data },
           '*',
         )
       try {

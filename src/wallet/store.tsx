@@ -122,15 +122,15 @@ type AccountCache = Record<number, { index: number; publicKey: string; secret: s
 // ── localStorage helpers (private) ────────────────────────────────────────────
 
 function seedKey(email: string) {
-  return `stellarable-seed:${email}`
+  return `xlmcode-seed:${email}`
 }
 
 function accountsKey(email: string) {
-  return `stellarable-accounts:${email}`
+  return `xlmcode-accounts:${email}`
 }
 
 function projectKey(email: string, slug: string) {
-  return `stellarable-project-wallets:${email}:${slug}`
+  return `xlmcode-project-wallets:${email}:${slug}`
 }
 
 function readSeedRecord(email: string): SeedRecord | null {

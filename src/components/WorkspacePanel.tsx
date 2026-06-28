@@ -749,12 +749,12 @@ export function WorkspacePanel({
 
             <div className="mt-4 flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2">
               <code className="min-w-0 truncate font-mono text-[12px] text-zinc-400">
-                stellarable.app/p/{projectName}
+                xlmcode.dev/p/{projectName}
               </code>
               <button
                 onClick={() => {
                   void navigator.clipboard?.writeText(
-                    'https://stellarable.app/p/' + projectName,
+                    'https://xlmcode.dev/p/' + projectName,
                   )
                   setLinkCopied(true)
                   setTimeout(() => setLinkCopied(false), 1200)

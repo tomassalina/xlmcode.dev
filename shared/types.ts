@@ -42,7 +42,7 @@ export interface ManifestMethod {
 }
 
 /**
- * A contract manifest. Adding a new protocol to Stellarable = adding one of these
+ * A contract manifest. Adding a new protocol to xlmcode = adding one of these
  * JSON files, without touching the engine (see PLAN.md §6).
  */
 export interface Manifest {

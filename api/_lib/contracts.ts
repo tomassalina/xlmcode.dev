@@ -1,7 +1,7 @@
 /**
  * Contract catalog registry.
  *
- * Adding a protocol to Stellarable = dropping a Manifest JSON in
+ * Adding a protocol to xlmcode = dropping a Manifest JSON in
  * contracts/manifests/ (+ its WASM via contracts/build.sh for deployables).
  * No engine changes — see PLAN.md §6.
  */

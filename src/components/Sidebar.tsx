@@ -47,11 +47,11 @@ export function Sidebar({
           <Link
             to="/app"
             className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-zinc-900/50"
-            title="Stellarable — home"
+            title="xlmcode — home"
           >
             <Sparkles className="h-5 w-5 shrink-0 text-violet-400" />
             <span className="text-[15px] font-medium tracking-tight">
-              Stellarable
+              xlmcode
             </span>
           </Link>
         )}

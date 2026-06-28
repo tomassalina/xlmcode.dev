@@ -38,7 +38,7 @@ export function MarketingLanding() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-violet-400" />
           <span className="text-[17px] font-semibold tracking-tight">
-            Stellarable
+            xlmcode
           </span>
         </div>
         <nav className="hidden items-center gap-7 text-[13.5px] text-zinc-400 md:flex">
@@ -75,7 +75,7 @@ export function MarketingLanding() {
             What do you want to build?
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-zinc-400">
-            Describe a Stellar app in plain language. Stellarable generates the
+            Describe a Stellar app in plain language. xlmcode generates the
             frontend, deploys audited smart contracts to testnet, and wires them
             together — no Rust, no setup.
           </p>
@@ -85,7 +85,7 @@ export function MarketingLanding() {
               onSend={startWithPrompt}
               busy={false}
               autoFocus
-              placeholder="Ask Stellarable to build a token, an NFT gallery, a DEX UI…"
+              placeholder="Ask xlmcode to build a token, an NFT gallery, a DEX UI…"
             />
           </div>
 
