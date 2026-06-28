@@ -27,6 +27,7 @@ export function Editor() {
     addDeployedContract,
     resolveMessageActions,
     cloneProject,
+    shareProject,
   } = useProjects()
   const project = slug ? getProject(slug) : undefined
   // While dragging the divider, kill pointer events on the preview so the
@@ -158,6 +159,7 @@ export function Editor() {
             contracts={project.contracts}
             onDeployed={(c) => addDeployedContract(project.slug, c)}
             readOnly={project.readOnly}
+            onShare={() => shareProject(project.id ?? '')}
             onFixError={(err) =>
               send(
                 project.slug,

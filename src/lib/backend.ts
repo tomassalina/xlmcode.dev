@@ -82,6 +82,21 @@ export function mintDemoNft(address: string): Promise<{ hash: string; tokenId: s
   })
 }
 
+/** Public read-only view of a shared project (no auth required). */
+export function fetchShared(token: string): Promise<{
+  project: { id: string; name: string; slug: string; current_files?: Record<string, string> }
+  versions: { id: string; label: string; summary: string; files: Record<string, string>; created_at: string }[]
+  messages: { role: string; content: string; created_at: string }[]
+  contracts: unknown[]
+}> {
+  return api(`/api/shared/${token}`)
+}
+
+/** Clone a shared project into the caller's account (requires login). */
+export function cloneShared(token: string): Promise<{ id: string; slug: string; name: string }> {
+  return api(`/api/shared/${token}/clone`, { method: 'POST' })
+}
+
 export async function streamChat(
   projectId: string,
   body: { userMessage: string; history?: unknown[]; fileTree?: unknown; modelType?: string },

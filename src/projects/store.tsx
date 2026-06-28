@@ -105,6 +105,8 @@ interface ProjectsContextValue {
   shareProject: (id: string) => Promise<string>
   /** Clone a project/template into the caller's account. Returns the new slug. */
   cloneProject: (id: string) => Promise<string>
+  /** Clone a shared project (by token) into the caller's account. Returns slug. */
+  cloneSharedProject: (token: string) => Promise<string>
 }
 
 const ProjectsContext = createContext<ProjectsContextValue | null>(null)
@@ -697,7 +699,22 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       `/api/projects/${id}/clone`,
       { method: 'POST' },
     )
-    // Add a stub so navigation works; full data hydrates on open (loaded:false).
+    addClonedStub(proj)
+    return proj.slug
+  }
+
+  const cloneSharedProject = async (token: string): Promise<string> => {
+    const proj = await api<{ id: string; slug: string; name: string }>(
+      `/api/shared/${token}/clone`,
+      { method: 'POST' },
+    )
+    addClonedStub(proj)
+    return proj.slug
+  }
+
+  /** Add a not-yet-hydrated project to the store so navigation works; full data
+   *  loads on open (loaded:false → getProject triggers loadProject). */
+  const addClonedStub = (proj: { id: string; slug: string; name: string }) => {
     commit({
       ...ref.current,
       [proj.slug]: {
@@ -718,7 +735,6 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         loaded: false,
       },
     })
-    return proj.slug
   }
 
   const getProject = (slug: string): ProjectState | undefined => {
@@ -755,6 +771,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     resolveMessageActions,
     shareProject,
     cloneProject,
+    cloneSharedProject,
   }
 
   return (

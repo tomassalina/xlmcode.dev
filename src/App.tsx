@@ -6,6 +6,7 @@ import { PricingPage } from './marketing/PricingPage'
 import { BuildHome } from './pages/BuildHome'
 import { Editor } from './pages/Editor'
 import { Profile } from './pages/Profile'
+import { SharedProject } from './pages/SharedProject'
 
 /** Public marketing pages at "/", "/contracts", "/pricing"; the authed app
  *  lives under the shell. */
@@ -15,6 +16,7 @@ function App() {
       <Route path="/" element={<MarketingLanding />} />
       <Route path="/contracts" element={<ContractsPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/p/:token" element={<SharedProject />} />
       <Route element={<AppShell />}>
         <Route path="/app" element={<BuildHome />} />
         <Route path="/projects/:slug" element={<Editor />} />

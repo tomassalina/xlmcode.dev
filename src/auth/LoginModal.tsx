@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from './store'
 
-export function LoginModal({ onClose }: { onClose?: () => void }) {
+export function LoginModal({
+  onClose,
+  onAuthed,
+}: {
+  onClose?: () => void
+  /** Fired after a successful OTP login (the user is now set). */
+  onAuthed?: () => void
+}) {
   const { startOtp, verifyOtp, loginWithGoogle } = useAuth()
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
@@ -31,6 +38,7 @@ export function LoginModal({ onClose }: { onClose?: () => void }) {
     setError('')
     try {
       await verifyOtp(email.trim(), code.trim())
+      onAuthed?.()
       onClose?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code')
