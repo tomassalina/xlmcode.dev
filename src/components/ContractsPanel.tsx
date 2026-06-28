@@ -317,6 +317,7 @@ type ProtocolEntry = {
   name: string
   blurb: string
   icon: typeof Coins
+  logo?: string
 }
 
 const EXISTING_PROTOCOLS: ProtocolEntry[] = [
@@ -324,38 +325,68 @@ const EXISTING_PROTOCOLS: ProtocolEntry[] = [
     name: 'Soroswap',
     blurb: 'DEX + liquidity aggregator. Best-price swaps.',
     icon: ArrowLeftRight,
+    logo: '/logos/soroswap.svg',
   },
   {
     name: 'Blend',
     blurb: 'Lending/borrowing pools with backstop.',
     icon: Layers,
+    logo: '/logos/blend.svg',
   },
   {
     name: 'Reflector',
     blurb: 'Price oracle (SEP-40). Read-only, low risk.',
     icon: Radio,
+    logo: '/logos/reflector.png',
   },
   {
     name: 'DeFindex',
     blurb: 'Yield infrastructure: automated vault strategies.',
     icon: TrendingUp,
+    logo: '/logos/defindex.svg',
   },
   {
     name: 'Trustless Work',
     blurb: 'Non-custodial milestone escrow in USDC.',
     icon: Handshake,
+    logo: '/logos/trustless-work.png',
   },
   {
     name: 'USDC (Stellar Asset Contract)',
     blurb: 'The asset most flows touch. First-class citizen.',
     icon: CircleDollarSign,
+    logo: '/logos/usdc.svg',
   },
   {
     name: 'x402',
     blurb: 'HTTP-request payments / micropayments / agent payments.',
     icon: Zap,
+    logo: '/logos/x402.svg',
   },
 ]
+
+function ProtocolLogo({
+  logo,
+  name,
+  icon: Icon,
+}: {
+  logo?: string
+  name: string
+  icon: typeof Coins
+}) {
+  const [imgFailed, setImgFailed] = useState(false)
+  if (logo && !imgFailed) {
+    return (
+      <img
+        src={logo}
+        alt={name}
+        className="h-6 w-6 rounded object-contain"
+        onError={() => setImgFailed(true)}
+      />
+    )
+  }
+  return <Icon className="h-5 w-5 text-zinc-300" />
+}
 
 function AddContractModal({
   onClose,
@@ -466,24 +497,21 @@ function AddContractModal({
                     Connect to a live protocol by its contract ID — coming soon.
                   </p>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {EXISTING_PROTOCOLS.map((entry) => {
-                      const Icon = entry.icon
-                      return (
-                        <div
-                          key={entry.name}
-                          className="relative flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/30 p-3.5 opacity-60"
-                        >
-                          <Icon className="h-5 w-5 text-zinc-300" />
-                          <span className="text-[13px] font-medium text-zinc-100">{entry.name}</span>
-                          <span className="line-clamp-3 text-[11.5px] leading-relaxed text-zinc-500">
-                            {entry.blurb}
-                          </span>
-                          <span className="absolute right-2.5 top-2.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
-                            Soon
-                          </span>
-                        </div>
-                      )
-                    })}
+                    {EXISTING_PROTOCOLS.map((entry) => (
+                      <div
+                        key={entry.name}
+                        className="relative flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/30 p-3.5 opacity-60"
+                      >
+                        <ProtocolLogo logo={entry.logo} name={entry.name} icon={entry.icon} />
+                        <span className="text-[13px] font-medium text-zinc-100">{entry.name}</span>
+                        <span className="line-clamp-3 text-[11.5px] leading-relaxed text-zinc-500">
+                          {entry.blurb}
+                        </span>
+                        <span className="absolute right-2.5 top-2.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+                          Soon
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
