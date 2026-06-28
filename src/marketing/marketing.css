@@ -1,0 +1,61 @@
+/* XLM Code marketing pages (landing / contracts / pricing). Faithful to the
+   Claude Design "XLM Code Landing" doc: Space Grotesk + JetBrains Mono, black
+   canvas, #FDDA24 yellow accent. Scoped under .xlm-marketing so it never leaks
+   into the app. Inline styles cover layout; this file covers what inline can't:
+   fonts, keyframes, :hover, ::selection, responsive. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+.xlm-marketing {
+  background: #000;
+  color: #fafafa;
+  font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.xlm-marketing * { box-sizing: border-box; }
+.xlm-marketing ::selection { background: #FDDA24; color: #000; }
+
+@keyframes xlmMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes xlmGlow { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
+@keyframes xlmFadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes xlmPopIn { from { opacity: 0; transform: scale(0.985) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+.xlm-fadeup { opacity: 0; animation: xlmFadeUp .7s ease forwards; }
+.xlm-popin { opacity: 0; animation: xlmPopIn .7s ease .15s forwards; }
+
+/* Hover patterns ported from the design's style-hover */
+.xlm-navlink { color: #bdbdbd; cursor: pointer; transition: color .2s ease; }
+.xlm-navlink:hover { color: #fff; }
+
+.xlm-pill { transition: transform .2s ease, box-shadow .25s ease; }
+.xlm-pill:hover { transform: translateY(-1px); box-shadow: 16px -14px 40px -8px rgba(253, 218, 36, 0.6); }
+
+.xlm-chip { transition: transform .2s ease, box-shadow .25s ease, background .2s ease; }
+.xlm-chip:hover { background: #141414 !important; transform: translateY(-1px); box-shadow: 14px -12px 32px -10px rgba(253, 218, 36, 0.32); }
+
+.xlm-card { transition: transform .2s ease, box-shadow .25s ease, border-color .2s ease; }
+.xlm-card:hover { transform: translateY(-2px); border-color: #3a3320; box-shadow: 16px -14px 40px -12px rgba(253, 218, 36, 0.3); }
+
+.xlm-cardext { transition: transform .2s ease, box-shadow .25s ease; }
+.xlm-cardext:hover { transform: translateY(-2px); box-shadow: 16px -14px 40px -12px rgba(253, 218, 36, 0.26); }
+
+.xlm-bento { transition: transform .2s ease, box-shadow .25s ease; }
+.xlm-bento:hover { transform: translateY(-3px); box-shadow: 22px -18px 56px -14px rgba(253, 218, 36, 0.3); }
+
+.xlm-soft { transition: transform .2s ease, box-shadow .25s ease, background .2s ease; }
+.xlm-soft:hover { background: #141414; transform: translateY(-2px); box-shadow: 20px -16px 50px -12px rgba(253, 218, 36, 0.34); }
+
+.xlm-iconbtn { transition: background .2s ease, box-shadow .25s ease; }
+.xlm-iconbtn:hover { background: #141414; box-shadow: 14px -12px 34px -10px rgba(253, 218, 36, 0.4); }
+
+/* Responsive: collapse grids + scale type on narrow screens */
+@media (max-width: 900px) {
+  .xlm-hide-mobile { display: none !important; }
+  .xlm-grid-2, .xlm-grid-3 { grid-template-columns: 1fr !important; }
+  .xlm-bento-tall { grid-row: auto !important; min-height: 0 !important; }
+  .xlm-h1 { font-size: 44px !important; }
+  .xlm-h2 { font-size: 34px !important; }
+  .xlm-cta-h2 { font-size: 42px !important; }
+}
