@@ -25,6 +25,9 @@
 .xlm-fadeup { opacity: 0; animation: xlmFadeUp .7s ease forwards; }
 .xlm-popin { opacity: 0; animation: xlmPopIn .7s ease .15s forwards; }
 
+@keyframes xlmPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.xlm-skel { background: #161616; border-radius: 8px; animation: xlmPulse 1.4s ease-in-out infinite; }
+
 /* Hover patterns ported from the design's style-hover */
 .xlm-navlink { color: #bdbdbd; cursor: pointer; transition: color .2s ease; }
 .xlm-navlink:hover { color: #fff; }

@@ -1,7 +1,7 @@
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../auth/store'
 import { Nav, Footer, Eyebrow } from './shared'
-import { TemplatesGallery } from './TemplatesGallery'
+import { TemplatesGallery, TemplatesGallerySkeleton } from './TemplatesGallery'
 import { useMarketingSeo } from './seo'
 import './marketing.css'
 
@@ -12,10 +12,11 @@ export function TemplatesPage() {
     path: '/templates',
   })
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
-  // Logged-in users get the in-shell templates view.
-  if (user) return <Navigate to="/app/templates" replace />
+  // Logged-in users get the in-shell templates view (only once auth resolves —
+  // avoids a flash of the public page before the redirect).
+  if (!loading && user) return <Navigate to="/app/templates" replace />
 
   return (
     <div className="xlm-marketing" style={{ height: '100%', overflowY: 'auto' }}>
@@ -30,7 +31,7 @@ export function TemplatesPage() {
             Each template is a complete, deployed example. Preview the code, contracts and live app — then clone it to make it your own.
           </p>
         </div>
-        <TemplatesGallery />
+        {loading ? <TemplatesGallerySkeleton /> : <TemplatesGallery />}
       </div>
       <Footer />
     </div>

@@ -23,6 +23,25 @@ const USECASE: Record<string, { tagline: string; body: string; icon: ReactNode }
   },
 }
 
+/** Skeleton cards shown while the page is still resolving (avoids a flash). */
+export function TemplatesGallerySkeleton() {
+  return (
+    <div className="xlm-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} style={{ border: '1px solid #1f1f1f', borderRadius: 22, padding: 30, background: '#070707', display: 'flex', flexDirection: 'column', minHeight: 260 }}>
+          <div className="xlm-skel" style={{ width: 52, height: 52, borderRadius: 13, marginBottom: 22 }} />
+          <div className="xlm-skel" style={{ width: 110, height: 11, marginBottom: 14 }} />
+          <div className="xlm-skel" style={{ width: '70%', height: 18, marginBottom: 14 }} />
+          <div className="xlm-skel" style={{ width: '100%', height: 12, marginBottom: 8 }} />
+          <div className="xlm-skel" style={{ width: '92%', height: 12, marginBottom: 8 }} />
+          <div className="xlm-skel" style={{ width: '60%', height: 12 }} />
+          <div className="xlm-skel" style={{ marginTop: 'auto', width: 120, height: 14 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** The 3 template use-case cards → each opens its shared preview at /p/:token. */
 export function TemplatesGallery() {
   const navigate = useNavigate()
