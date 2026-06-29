@@ -28,6 +28,17 @@ app.use(
 app.use(cookieParser())
 app.use(express.json({ limit: '5mb' }))
 
+// Lightweight request log: method, path, status, and whether a session cookie
+// was present/sent — to debug auth in production.
+app.use((req, res, next) => {
+  const start = Date.now()
+  const hasCookie = Object.keys((req.cookies as Record<string, string>) ?? {}).some((k) => k.startsWith('sb-'))
+  res.on('finish', () => {
+    console.log(`[req] ${req.method} ${req.path} → ${res.statusCode} ${Date.now() - start}ms origin=${req.headers.origin ?? '-'} sbCookie=${hasCookie} setCookie=${res.getHeader('set-cookie') ? 'yes' : 'no'}`)
+  })
+  next()
+})
+
 // Routes
 app.use('/auth', authRouter)
 app.use('/api', projectsRouter)
