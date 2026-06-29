@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { requireUser } from '../middleware/auth.js'
-import { listManifests, getManifest } from '../../api/_lib/contracts.js'
-import { deployContract } from '../../api/_lib/deploy.js'
-import { mintDemoTokens, DEMO_TOKEN_ID } from '../../api/_lib/faucet.js'
-import { mintNft, DEMO_NFT_ID } from '../../api/_lib/nft.js'
+import { listManifests, getManifest } from '../_lib/contracts.js'
+import { deployContract } from '../_lib/deploy.js'
+import { mintDemoTokens, DEMO_TOKEN_ID } from '../_lib/faucet.js'
+import { mintNft, DEMO_NFT_ID } from '../_lib/nft.js'
 
 const router = Router()
 

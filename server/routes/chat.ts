@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { requireUser } from '../middleware/auth.js'
 import { adminClient } from '../lib/supabase.js'
-import { streamChat } from '../../api/_lib/llm.js'
-import { checkGuardrail, refusalMessage } from '../../api/_lib/guardrail.js'
-import { listManifests } from '../../api/_lib/contracts.js'
+import { streamChat } from '../_lib/llm.js'
+import { checkGuardrail, refusalMessage } from '../_lib/guardrail.js'
+import { listManifests } from '../_lib/contracts.js'
 import type { FileTree, ChatMessage } from '../../shared/types.js'
 
 const router = Router()
